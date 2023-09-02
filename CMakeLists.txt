@@ -1,7 +1,7 @@
 ﻿# CMakeList.txt : CMake project for influxd-wind-svg, include source and define
 # project specific logic here.
 #
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required(VERSION 3.12.0)
 
 # Enable Hot Reload for MSVC compilers if supported.
 if (POLICY CMP0141)
@@ -19,3 +19,6 @@ if (CMAKE_VERSION VERSION_GREATER 3.12)
 endif()
 
 # TODO: Add tests and install targets if needed.
+
+find_package(InfluxDB)
+target_link_libraries(influxd-wind-svg PRIVATE InfluxData::InfluxDB)
