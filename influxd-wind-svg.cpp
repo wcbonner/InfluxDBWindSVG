@@ -36,7 +36,7 @@
 using namespace std;
 
 /////////////////////////////////////////////////////////////////////////////
-static const std::string ProgramVersionString("influxd-wind-svg Version 2.20230902-1 Built on: " __DATE__ " at " __TIME__);
+static const std::string ProgramVersionString("InfluxDBWindSVG Version 1.20230903-1 Built on: " __DATE__ " at " __TIME__);
 /////////////////////////////////////////////////////////////////////////////
 std::string timeToISO8601(const time_t& TheTime, const bool LocalTime = false)
 {
@@ -123,6 +123,62 @@ time_t ISO8601totime(const std::string& ISOTime)
 std::string timeToExcelDate(const time_t& TheTime, const bool LocalTime = false) { std::string ExcelDate(timeToISO8601(TheTime, LocalTime)); ExcelDate.replace(10, 1, " "); return(ExcelDate); }
 std::string timeToExcelLocal(const time_t& TheTime) { return(timeToExcelDate(TheTime, true)); }
 /////////////////////////////////////////////////////////////////////////////
+bool ValidateDirectory(const std::filesystem::path& DirectoryName)
+{
+	bool rval = false;
+	// https://linux.die.net/man/2/stat
+	struct stat64 StatBuffer;
+	if (0 == stat64(DirectoryName.c_str(), &StatBuffer))
+		if (S_ISDIR(StatBuffer.st_mode))
+		{
+			// https://linux.die.net/man/2/access
+			if (0 == access(DirectoryName.c_str(), R_OK | W_OK))
+				rval = true;
+			else
+			{
+				switch (errno)
+				{
+				case EACCES:
+					std::cerr << DirectoryName << " (" << errno << ") The requested access would be denied to the file, or search permission is denied for one of the directories in the path prefix of pathname." << std::endl;
+					break;
+				case ELOOP:
+					std::cerr << DirectoryName << " (" << errno << ") Too many symbolic links were encountered in resolving pathname." << std::endl;
+					break;
+				case ENAMETOOLONG:
+					std::cerr << DirectoryName << " (" << errno << ") pathname is too long." << std::endl;
+					break;
+				case ENOENT:
+					std::cerr << DirectoryName << " (" << errno << ") A component of pathname does not exist or is a dangling symbolic link." << std::endl;
+					break;
+				case ENOTDIR:
+					std::cerr << DirectoryName << " (" << errno << ") A component used as a directory in pathname is not, in fact, a directory." << std::endl;
+					break;
+				case EROFS:
+					std::cerr << DirectoryName << " (" << errno << ") Write permission was requested for a file on a read-only file system." << std::endl;
+					break;
+				case EFAULT:
+					std::cerr << DirectoryName << " (" << errno << ") pathname points outside your accessible address space." << std::endl;
+					break;
+				case EINVAL:
+					std::cerr << DirectoryName << " (" << errno << ") mode was incorrectly specified." << std::endl;
+					break;
+				case EIO:
+					std::cerr << DirectoryName << " (" << errno << ") An I/O error occurred." << std::endl;
+					break;
+				case ENOMEM:
+					std::cerr << DirectoryName << " (" << errno << ") Insufficient kernel memory was available." << std::endl;
+					break;
+				case ETXTBSY:
+					std::cerr << DirectoryName << " (" << errno << ") Write access was requested to an executable which is being executed." << std::endl;
+					break;
+				default:
+					std::cerr << DirectoryName << " (" << errno << ") An unknown error." << std::endl;
+				}
+			}
+		}
+	return(rval);
+}
+/////////////////////////////////////////////////////////////////////////////
 int ConsoleVerbosity(1);
 std::filesystem::path SVGDirectory;	// If this remains empty, SVG Files are not created. If it's specified, _day, _week, _month, and _year.svg files are created for each bluetooth address seen.
 int SVGMinMax(0); // 0x01 = Draw Temperature and Humiditiy Minimum and Maximum line on daily, 0x02 = on weekly, 0x04 = on monthly, 0x08 = on yearly
@@ -147,7 +203,7 @@ public:
 		ApparentWindSpeed = wind;
 		Averages = 1;
 	};
-	Influx_Wind(const std::string& data);
+	Influx_Wind(const influxdb::Point& data);
 	double GetApparentWindSpeed(void) const { return(ApparentWindSpeed); };
 	double GetApparentWindSpeedMin(void) const { return(std::min(ApparentWindSpeed, ApparentWindSpeedMin)); };
 	double GetApparentWindSpeedMax(void) const { return(std::max(ApparentWindSpeed, ApparentWindSpeedMax)); };
@@ -163,6 +219,14 @@ protected:
 	double ApparentWindSpeedMax;
 	int Averages;
 };
+Influx_Wind::Influx_Wind(const influxdb::Point& data)
+{
+	Time = std::chrono::system_clock::to_time_t(data.getTimestamp());
+	std::string value(data.getFields());
+	value.erase(0, value.find("=") + 1);
+	ApparentWindSpeedMax = ApparentWindSpeedMin = ApparentWindSpeed = std::atof(value.c_str()) * 1.9438445; // data is recorded in m/s and I want it in knots
+	Averages = 1;
+}
 void Influx_Wind::SetMinMax(const Influx_Wind& a)
 {
 	ApparentWindSpeedMin = ApparentWindSpeedMin < ApparentWindSpeed ? ApparentWindSpeedMin : ApparentWindSpeed;
@@ -220,89 +284,6 @@ Influx_Wind& Influx_Wind::operator +=(const Influx_Wind& b)
 	return(*this);
 }
 /////////////////////////////////////////////////////////////////////////////
-std::vector<Influx_Wind> InfluxMRTGLogs; // vector structure similar to MRTG Log File
-// Takes current datapoint and updates the mapped structure in memory simulating the contents of a MRTG log file.
-void UpdateMRTGData(std::vector<Influx_Wind>& FakeMRTGFile, Influx_Wind& TheValue)
-{
-	if (FakeMRTGFile.empty())
-	{
-		FakeMRTGFile.resize(2 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT + YEAR_COUNT);
-		FakeMRTGFile[0] = TheValue;	// current value
-		FakeMRTGFile[1] = TheValue;
-		for (auto index = 0; index < DAY_COUNT; index++)
-			FakeMRTGFile[index + 2].Time = FakeMRTGFile[index + 1].Time - DAY_SAMPLE;
-		for (auto index = 0; index < WEEK_COUNT; index++)
-			FakeMRTGFile[index + 2 + DAY_COUNT].Time = FakeMRTGFile[index + 1 + DAY_COUNT].Time - WEEK_SAMPLE;
-		for (auto index = 0; index < MONTH_COUNT; index++)
-			FakeMRTGFile[index + 2 + DAY_COUNT + WEEK_COUNT].Time = FakeMRTGFile[index + 1 + DAY_COUNT + WEEK_COUNT].Time - MONTH_SAMPLE;
-		for (auto index = 0; index < YEAR_COUNT; index++)
-			FakeMRTGFile[index + 2 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT].Time = FakeMRTGFile[index + 1 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT].Time - YEAR_SAMPLE;
-	}
-	else
-	{
-		if (TheValue.Time > FakeMRTGFile[0].Time)
-		{
-			FakeMRTGFile[0] = TheValue;	// current value
-			FakeMRTGFile[1] += TheValue; // averaged value up to DAY_SAMPLE size
-		}
-	}
-	bool ZeroAccumulator = false;
-	auto DaySampleFirst = FakeMRTGFile.begin() + 2;
-	auto DaySampleLast = FakeMRTGFile.begin() + 1 + DAY_COUNT;
-	auto WeekSampleFirst = FakeMRTGFile.begin() + 2 + DAY_COUNT;
-	auto WeekSampleLast = FakeMRTGFile.begin() + 1 + DAY_COUNT + WEEK_COUNT;
-	auto MonthSampleFirst = FakeMRTGFile.begin() + 2 + DAY_COUNT + WEEK_COUNT;
-	auto MonthSampleLast = FakeMRTGFile.begin() + 1 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT;
-	auto YearSampleFirst = FakeMRTGFile.begin() + 2 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT;
-	auto YearSampleLast = FakeMRTGFile.begin() + 1 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT + YEAR_COUNT;
-	// For every time difference between FakeMRTGFile[1] and FakeMRTGFile[2] that's greater than DAY_SAMPLE we shift that data towards the back.
-	while (difftime(FakeMRTGFile[1].Time, DaySampleFirst->Time) > DAY_SAMPLE)
-	{
-		ZeroAccumulator = true;
-		// shuffle all the day samples toward the end
-		std::copy_backward(DaySampleFirst, DaySampleLast - 1, DaySampleLast);
-		*DaySampleFirst = FakeMRTGFile[1];
-		DaySampleFirst->NormalizeTime(Influx_Wind::granularity::day);
-		if (difftime(DaySampleFirst->Time, (DaySampleFirst + 1)->Time) > DAY_SAMPLE)
-			DaySampleFirst->Time = (DaySampleFirst + 1)->Time + DAY_SAMPLE;
-		if (DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::year)
-		{
-			if (ConsoleVerbosity > 1)
-				std::cout << "[" << getTimeISO8601() << "] shuffling year " << timeToExcelLocal(DaySampleFirst->Time) << " > " << timeToExcelLocal(YearSampleFirst->Time) << std::endl;
-			// shuffle all the year samples toward the end
-			std::copy_backward(YearSampleFirst, YearSampleLast - 1, YearSampleLast);
-			*YearSampleFirst = Influx_Wind();
-			for (auto iter = DaySampleFirst; (iter->IsValid() && ((iter - DaySampleFirst) < (12 * 24))); iter++) // One Day of day samples
-				*YearSampleFirst += *iter;
-		}
-		if ((DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::year) ||
-			(DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::month))
-		{
-			if (ConsoleVerbosity > 1)
-				std::cout << "[" << getTimeISO8601() << "] shuffling month " << timeToExcelLocal(DaySampleFirst->Time) << std::endl;
-			// shuffle all the month samples toward the end
-			std::copy_backward(MonthSampleFirst, MonthSampleLast - 1, MonthSampleLast);
-			*MonthSampleFirst = Influx_Wind();
-			for (auto iter = DaySampleFirst; (iter->IsValid() && ((iter - DaySampleFirst) < (12 * 2))); iter++) // two hours of day samples
-				*MonthSampleFirst += *iter;
-		}
-		if ((DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::year) ||
-			(DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::month) ||
-			(DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::week))
-		{
-			if (ConsoleVerbosity > 1)
-				std::cout << "[" << getTimeISO8601() << "] shuffling week " << timeToExcelLocal(DaySampleFirst->Time) << std::endl;
-			// shuffle all the month samples toward the end
-			std::copy_backward(WeekSampleFirst, WeekSampleLast - 1, WeekSampleLast);
-			*WeekSampleFirst = Influx_Wind();
-			for (auto iter = DaySampleFirst; (iter->IsValid() && ((iter - DaySampleFirst) < 6)); iter++) // Half an hour of day samples
-				*WeekSampleFirst += *iter;
-		}
-	}
-	if (ZeroAccumulator)
-		FakeMRTGFile[1] = Influx_Wind();
-}
-/////////////////////////////////////////////////////////////////////////////
 enum class GraphType { daily, weekly, monthly, yearly };
 void WriteSVG(std::vector<Influx_Wind>& TheValues, const std::filesystem::path& SVGFileName, const std::string& Title = "", const GraphType graph = GraphType::daily, const bool MinMax = false)
 {
@@ -330,7 +311,7 @@ void WriteSVG(std::vector<Influx_Wind>& TheValues, const std::filesystem::path& 
 				else
 					std::cerr << "Writing: " << SVGFileName.string() << " With Title: " << Title << std::endl;
 				std::ostringstream tempOString;
-				tempOString << "Wind Speed (" << std::fixed << std::setprecision(1) << TheValues[0].GetApparentWindSpeed();
+				tempOString << "Wind Speed (" << std::fixed << std::setprecision(1) << TheValues[0].GetApparentWindSpeed() << " kn)";
 				std::string YLegendWindSpeed(tempOString.str());
 				int GraphTop = FontSize + TickSize;
 				int GraphBottom = SVGHeight - GraphTop;
@@ -456,8 +437,8 @@ void WriteSVG(std::vector<Influx_Wind>& TheValues, const std::filesystem::path& 
 
 				if (MinMax)
 				{
-					// Temperature Values as a filled polygon showing the minimum and maximum
-					SVGFile << "\t<!-- Temperature MinMax -->" << std::endl;
+					// ApparentWindSpeed Values as a filled polygon showing the minimum and maximum
+					SVGFile << "\t<!-- ApparentWindSpeed MinMax -->" << std::endl;
 					SVGFile << "\t<polygon style=\"fill:blue;stroke:blue\" points=\"";
 					for (auto index = 1; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
 						SVGFile << index + GraphLeft << "," << int(((TempMax - TheValues[index].GetApparentWindSpeedMax()) * TempVerticalFactor) + GraphTop) << " ";
@@ -467,8 +448,8 @@ void WriteSVG(std::vector<Influx_Wind>& TheValues, const std::filesystem::path& 
 				}
 				else
 				{
-					// Temperature Values as a continuous line
-					SVGFile << "\t<!-- Temperature -->" << std::endl;
+					// ApparentWindSpeed Values as a continuous line
+					SVGFile << "\t<!-- ApparentWindSpeed -->" << std::endl;
 					SVGFile << "\t<polyline style=\"fill:none;stroke:blue\" points=\"";
 					for (auto index = 1; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
 						SVGFile << index + GraphLeft << "," << int(((TempMax - TheValues[index].GetApparentWindSpeed()) * TempVerticalFactor) + GraphTop) << " ";
@@ -486,39 +467,318 @@ void WriteSVG(std::vector<Influx_Wind>& TheValues, const std::filesystem::path& 
 	}
 }
 /////////////////////////////////////////////////////////////////////////////
+std::vector<Influx_Wind> InfluxMRTGLogs; // vector structure similar to MRTG Log File
+// Takes current datapoint and updates the mapped structure in memory simulating the contents of a MRTG log file.
+void UpdateMRTGData(std::vector<Influx_Wind>& FakeMRTGFile, Influx_Wind& TheValue)
+{
+	if (FakeMRTGFile.empty())
+	{
+		FakeMRTGFile.resize(2 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT + YEAR_COUNT);
+		FakeMRTGFile[0] = TheValue;	// current value
+		FakeMRTGFile[1] = TheValue;
+		for (auto index = 0; index < DAY_COUNT; index++)
+			FakeMRTGFile[index + 2].Time = FakeMRTGFile[index + 1].Time - DAY_SAMPLE;
+		for (auto index = 0; index < WEEK_COUNT; index++)
+			FakeMRTGFile[index + 2 + DAY_COUNT].Time = FakeMRTGFile[index + 1 + DAY_COUNT].Time - WEEK_SAMPLE;
+		for (auto index = 0; index < MONTH_COUNT; index++)
+			FakeMRTGFile[index + 2 + DAY_COUNT + WEEK_COUNT].Time = FakeMRTGFile[index + 1 + DAY_COUNT + WEEK_COUNT].Time - MONTH_SAMPLE;
+		for (auto index = 0; index < YEAR_COUNT; index++)
+			FakeMRTGFile[index + 2 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT].Time = FakeMRTGFile[index + 1 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT].Time - YEAR_SAMPLE;
+	}
+	else
+	{
+		if (TheValue.Time > FakeMRTGFile[0].Time)
+		{
+			FakeMRTGFile[0] = TheValue;	// current value
+			FakeMRTGFile[1] += TheValue; // averaged value up to DAY_SAMPLE size
+		}
+	}
+	bool ZeroAccumulator = false;
+	auto DaySampleFirst = FakeMRTGFile.begin() + 2;
+	auto DaySampleLast = FakeMRTGFile.begin() + 1 + DAY_COUNT;
+	auto WeekSampleFirst = FakeMRTGFile.begin() + 2 + DAY_COUNT;
+	auto WeekSampleLast = FakeMRTGFile.begin() + 1 + DAY_COUNT + WEEK_COUNT;
+	auto MonthSampleFirst = FakeMRTGFile.begin() + 2 + DAY_COUNT + WEEK_COUNT;
+	auto MonthSampleLast = FakeMRTGFile.begin() + 1 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT;
+	auto YearSampleFirst = FakeMRTGFile.begin() + 2 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT;
+	auto YearSampleLast = FakeMRTGFile.begin() + 1 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT + YEAR_COUNT;
+	// For every time difference between FakeMRTGFile[1] and FakeMRTGFile[2] that's greater than DAY_SAMPLE we shift that data towards the back.
+	while (difftime(FakeMRTGFile[1].Time, DaySampleFirst->Time) > DAY_SAMPLE)
+	{
+		ZeroAccumulator = true;
+		// shuffle all the day samples toward the end
+		std::copy_backward(DaySampleFirst, DaySampleLast - 1, DaySampleLast);
+		*DaySampleFirst = FakeMRTGFile[1];
+		DaySampleFirst->NormalizeTime(Influx_Wind::granularity::day);
+		if (difftime(DaySampleFirst->Time, (DaySampleFirst + 1)->Time) > DAY_SAMPLE)
+			DaySampleFirst->Time = (DaySampleFirst + 1)->Time + DAY_SAMPLE;
+		if (DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::year)
+		{
+			if (ConsoleVerbosity > 1)
+				std::cout << "[" << getTimeISO8601() << "] shuffling year " << timeToExcelLocal(DaySampleFirst->Time) << " > " << timeToExcelLocal(YearSampleFirst->Time) << std::endl;
+			// shuffle all the year samples toward the end
+			std::copy_backward(YearSampleFirst, YearSampleLast - 1, YearSampleLast);
+			*YearSampleFirst = Influx_Wind();
+			for (auto iter = DaySampleFirst; (iter->IsValid() && ((iter - DaySampleFirst) < (12 * 24))); iter++) // One Day of day samples
+				*YearSampleFirst += *iter;
+		}
+		if ((DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::year) ||
+			(DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::month))
+		{
+			if (ConsoleVerbosity > 1)
+				std::cout << "[" << getTimeISO8601() << "] shuffling month " << timeToExcelLocal(DaySampleFirst->Time) << std::endl;
+			// shuffle all the month samples toward the end
+			std::copy_backward(MonthSampleFirst, MonthSampleLast - 1, MonthSampleLast);
+			*MonthSampleFirst = Influx_Wind();
+			for (auto iter = DaySampleFirst; (iter->IsValid() && ((iter - DaySampleFirst) < (12 * 2))); iter++) // two hours of day samples
+				*MonthSampleFirst += *iter;
+		}
+		if ((DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::year) ||
+			(DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::month) ||
+			(DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::week))
+		{
+			if (ConsoleVerbosity > 1)
+				std::cout << "[" << getTimeISO8601() << "] shuffling week " << timeToExcelLocal(DaySampleFirst->Time) << std::endl;
+			// shuffle all the month samples toward the end
+			std::copy_backward(WeekSampleFirst, WeekSampleLast - 1, WeekSampleLast);
+			*WeekSampleFirst = Influx_Wind();
+			for (auto iter = DaySampleFirst; (iter->IsValid() && ((iter - DaySampleFirst) < 6)); iter++) // Half an hour of day samples
+				*WeekSampleFirst += *iter;
+		}
+	}
+	if (ZeroAccumulator)
+		FakeMRTGFile[1] = Influx_Wind();
+}
+// Returns a curated vector of data points specific to the requested graph type from the internal memory structure
+void ReadMRTGData(const std::vector<Influx_Wind>& FakeMRTGFile, std::vector<Influx_Wind>& TheValues, const GraphType graph = GraphType::daily)
+{
+	if (FakeMRTGFile.size() > 0)
+	{
+		auto DaySampleFirst = FakeMRTGFile.begin() + 2;
+		auto DaySampleLast = FakeMRTGFile.begin() + 1 + DAY_COUNT;
+		auto WeekSampleFirst = FakeMRTGFile.begin() + 2 + DAY_COUNT;
+		auto WeekSampleLast = FakeMRTGFile.begin() + 1 + DAY_COUNT + WEEK_COUNT;
+		auto MonthSampleFirst = FakeMRTGFile.begin() + 2 + DAY_COUNT + WEEK_COUNT;
+		auto MonthSampleLast = FakeMRTGFile.begin() + 1 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT;
+		auto YearSampleFirst = FakeMRTGFile.begin() + 2 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT;
+		auto YearSampleLast = FakeMRTGFile.begin() + 1 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT + YEAR_COUNT;
+		if (graph == GraphType::daily)
+		{
+			TheValues.resize(DAY_COUNT);
+			std::copy(DaySampleFirst, DaySampleLast, TheValues.begin());
+			auto iter = TheValues.begin();
+			while (iter->IsValid() && (iter != TheValues.end()))
+				iter++;
+			TheValues.resize(iter - TheValues.begin());
+			TheValues.begin()->Time = FakeMRTGFile.begin()->Time; //HACK: include the most recent time sample
+		}
+		else if (graph == GraphType::weekly)
+		{
+			TheValues.resize(WEEK_COUNT);
+			std::copy(WeekSampleFirst, WeekSampleLast, TheValues.begin());
+			auto iter = TheValues.begin();
+			while (iter->IsValid() && (iter != TheValues.end()))
+				iter++;
+			TheValues.resize(iter - TheValues.begin());
+		}
+		else if (graph == GraphType::monthly)
+		{
+			TheValues.resize(MONTH_COUNT);
+			std::copy(MonthSampleFirst, MonthSampleLast, TheValues.begin());
+			auto iter = TheValues.begin();
+			while (iter->IsValid() && (iter != TheValues.end()))
+				iter++;
+			TheValues.resize(iter - TheValues.begin());
+		}
+		else if (graph == GraphType::yearly)
+		{
+			TheValues.resize(YEAR_COUNT);
+			std::copy(YearSampleFirst, YearSampleLast, TheValues.begin());
+			auto iter = TheValues.begin();
+			while (iter->IsValid() && (iter != TheValues.end()))
+				iter++;
+			TheValues.resize(iter - TheValues.begin());
+		}
+	}
+}
+/////////////////////////////////////////////////////////////////////////////
+static void usage(int argc, char** argv)
+{
+	std::cout << "Usage: " << argv[0] << " [options]" << std::endl;
+	std::cout << "  " << ProgramVersionString << std::endl;
+	std::cout << "  Options:" << std::endl;
+	std::cout << "    -h | --help          Print this message" << std::endl;
+	std::cout << "    -v | --verbose level stdout verbosity level [" << ConsoleVerbosity << "]" << std::endl;
+	std::cout << "    -s | --svg name      SVG output directory [" << SVGDirectory << "]" << std::endl;
+	std::cout << "    -x | --minmax graph  Draw the minimum and maximum temperature and humidity status on SVG graphs. 1:daily, 2:weekly, 4:monthly, 8:yearly" << std::endl;
+	std::cout << std::endl;
+}
+static const char short_options[] = "hv:s:x:";
+static const struct option long_options[] = {
+		{ "help",   no_argument,       NULL, 'h' },
+		{ "verbose",required_argument, NULL, 'v' },
+		{ "svg",	required_argument, NULL, 's' },
+		{ "minmax",	required_argument, NULL, 'x' },
+		{ 0, 0, 0, 0 }
+};
+/////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv)
 {
-	cout << "Hello CMake." << endl;
+	for (;;)
+	{
+		std::string TempString;
+		std::filesystem::path TempPath;
+		int idx;
+		int c = getopt_long(argc, argv, short_options, long_options, &idx);
+		if (-1 == c)
+			break;
+		switch (c)
+		{
+		case 0: /* getopt_long() flag */
+			break;
+		case '?':
+		case 'h':
+			usage(argc, argv);
+			exit(EXIT_SUCCESS);
+		case 'v':
+			try { ConsoleVerbosity = std::stoi(optarg); }
+			catch (const std::invalid_argument& ia) { std::cerr << "Invalid argument: " << ia.what() << std::endl; exit(EXIT_FAILURE); }
+			catch (const std::out_of_range& oor) { std::cerr << "Out of Range error: " << oor.what() << std::endl; exit(EXIT_FAILURE); }
+			break;
+		case 's':
+			TempPath = std::string(optarg);
+			while (TempPath.filename().empty() && (TempPath != TempPath.root_directory())) // This gets rid of the "/" on the end of the path
+				TempPath = TempPath.parent_path();
+			if (ValidateDirectory(TempPath))
+				SVGDirectory = TempPath;
+			break;
+		case 'x':
+			try { SVGMinMax = std::stoi(optarg); }
+			catch (const std::invalid_argument& ia) { std::cerr << "Invalid argument: " << ia.what() << std::endl; exit(EXIT_FAILURE); }
+			catch (const std::out_of_range& oor) { std::cerr << "Out of Range error: " << oor.what() << std::endl; exit(EXIT_FAILURE); }
+			break;
+		default:
+			usage(argc, argv);
+			exit(EXIT_FAILURE);
+		}
+	}
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	if (ConsoleVerbosity > 0)
+	{
+		std::cout << "[" << getTimeISO8601() << "] " << ProgramVersionString << std::endl;
+		if (ConsoleVerbosity > 1)
+		{
+			std::cout << "[                   ]      svg: " << SVGDirectory << std::endl;
+			std::cout << "[                   ]   minmax: " << SVGMinMax << std::endl;
+		}
+	}
+	else
+		std::cerr << ProgramVersionString << " (starting)" << std::endl;
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	tzset();
+	///////////////////////////////////////////////////////////////////////////////////////////////
 
 	auto db = influxdb::InfluxDBFactory::Get("http://localhost:8086?db=sola");
-	//db->createDatabaseIfNotExists();
 
-	std::cout << "SHOW DATABASES" << std::endl;
-	for (auto i : db->query("SHOW DATABASES"))
-		std::cout << i.getTags() << std::endl;
-	std::cout << std::endl;
-
-	std::cout << "SHOW MEASUREMENTS" << std::endl;
-	for (auto i : db->query("SHOW MEASUREMENTS"))
-		std::cout << i.getTags() << std::endl;
-	std::cout << std::endl;
-
-	std::cout << "SELECT * FROM \"environment.wind.speedApparent\" WHERE time > now()-5m" << std::endl;
-	//for (auto i : db->query("SELECT * FROM \"environment.wind.speedApparent\" WHERE time > now()-1h"))
-	for (auto i : db->query("SELECT * FROM \"environment.wind.speedApparent\" WHERE time > now()-5m"))
+	// loop a day at a time starting YEAR_COUNT days ago.
+	for (int day = YEAR_COUNT; day > 0; )
 	{
-		std::cout << i.getName() << ":";
-		std::cout << i.getTags() << ":";
-		std::cout << i.getFields() << ":";
-		std::cout << std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(i.getTimestamp().time_since_epoch()).count()) << std::endl;
+		std::stringstream ssInfluxDBQuery;
+		ssInfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > now()-" << day << "d AND time < now()-" << --day << "d";
+		if (ConsoleVerbosity > 0)
+			std::cout << "[" << getTimeISO8601() << "] " << ssInfluxDBQuery.str() << std::endl;
+		for (auto i : db->query(ssInfluxDBQuery.str()))
+		{
+			Influx_Wind myWind(i);
+			UpdateMRTGData(InfluxMRTGLogs, myWind);
+		}
 	}
 
-	std::cout << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > now()-5m" << std::endl;
-	for (auto i : db->query("SELECT value FROM \"environment.wind.speedApparent\" WHERE time > now()-5m"))
+	std::string InfluxDBQuery;
+	InfluxDBQuery = "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > now()-2d";
+	if (ConsoleVerbosity > 0)
+		std::cout << "[" << getTimeISO8601() << "] " << InfluxDBQuery << std::endl;
+
+	//std::cout << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time >= '2023-09-01 00:00:00' and time < '2023-09-02 00:00:00'" << std::endl;
+	// 	for (auto i : db->query("SELECT value FROM \"environment.wind.speedApparent\" WHERE time >= '2023-09-01 00:00:00' and time < '2023-09-02 00:00:00'"))
+
+	int count = 0;
+	for (auto i : db->query(InfluxDBQuery))
 	{
-		std::cout << i.getFields() << ":";
-		std::cout << std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(i.getTimestamp().time_since_epoch()).count()) << std::endl;
+		Influx_Wind myWind(i);
+		std::cout << "[" << timeToISO8601(myWind.Time, true) << "] " << myWind.GetApparentWindSpeed() << " (" << ++count << ")" << std::endl;
+		UpdateMRTGData(InfluxMRTGLogs, myWind);
+	}
+	std::vector<Influx_Wind> TheValues;
+	ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::daily);
+	WriteSVG(TheValues, "/home/visualstudio/sola_wind-day.svg", "Sola Apparent Wind Speed", GraphType::daily, true);
+	ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::weekly);
+	WriteSVG(TheValues, "/home/visualstudio/sola_wind-week.svg", "Sola Apparent Wind Speed", GraphType::weekly, true);
+	ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::monthly);
+	WriteSVG(TheValues, "/home/visualstudio/sola_wind-month.svg", "Sola Apparent Wind Speed", GraphType::monthly, true);
+	ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::yearly);
+	WriteSVG(TheValues, "/home/visualstudio/sola_wind-year.svg", "Sola Apparent Wind Speed", GraphType::yearly, true);
+
+	bool bRun = true;
+	while (bRun)
+	{
+		sigset_t set;
+		sigemptyset(&set);
+		sigaddset(&set, SIGALRM);
+		sigaddset(&set, SIGINT);
+		sigaddset(&set, SIGHUP);
+		alarm(60);
+		if (ConsoleVerbosity > 0)
+			std::cout << "[" << getTimeISO8601() << "] Alarm Set" << std::endl;
+		int sig = 0;
+		int s = sigwait(&set, &sig);
+		if (sig == SIGALRM)
+		{
+			if (ConsoleVerbosity > 0)
+				std::cout << "[" << getTimeISO8601() << "] Alarm Recieved" << std::endl;
+			InfluxDBQuery = "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '";
+			InfluxDBQuery.append(timeToExcelDate(InfluxMRTGLogs[0].Time));
+			InfluxDBQuery.append("'");
+			std::cout << "[" << getTimeISO8601() << "] " << InfluxDBQuery << std::endl;
+			count = 0;
+			for (auto i : db->query(InfluxDBQuery))
+			{
+				Influx_Wind myWind(i);
+				std::cout << "[" << timeToISO8601(myWind.Time, true) << "] " << myWind.GetApparentWindSpeed() << " (" << ++count << ")" << std::endl;
+				UpdateMRTGData(InfluxMRTGLogs, myWind);
+			}
+			ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::daily);
+			WriteSVG(TheValues, "/home/visualstudio/sola_wind-day.svg", "Sola Apparent Wind Speed", GraphType::daily, true);
+			ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::weekly);
+			WriteSVG(TheValues, "/home/visualstudio/sola_wind-week.svg", "Sola Apparent Wind Speed", GraphType::weekly, true);
+			ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::monthly);
+			WriteSVG(TheValues, "/home/visualstudio/sola_wind-month.svg", "Sola Apparent Wind Speed", GraphType::monthly, true);
+			ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::yearly);
+			WriteSVG(TheValues, "/home/visualstudio/sola_wind-year.svg", "Sola Apparent Wind Speed", GraphType::yearly, true);
+		}
+		else if (sig == SIGINT)
+		{
+			bRun = false;
+			if (ConsoleVerbosity > 0)
+				std::cout << "[" << getTimeISO8601() << "] ***************** SIGINT: Caught Ctrl-C, finishing loop and quitting. *****************" << std::endl;
+			else
+				std::cerr << "***************** SIGINT: Caught Ctrl-C, finishing loop and quitting. *****************" << std::endl;
+		}
+		else if (sig == SIGHUP)
+		{
+			bRun = false;
+			if (ConsoleVerbosity > 0)
+				std::cout << "[" << getTimeISO8601() << "] ***************** SIGHUP: Caught HangUp, finishing loop and quitting. *****************" << std::endl;
+			else
+				std::cerr << "***************** SIGHUP: Caught HangUp, finishing loop and quitting. *****************" << std::endl;
+		}
 	}
 
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	if (ConsoleVerbosity > 0)
+		std::cout << "[" << getTimeISO8601() << "] " << ProgramVersionString << " (exiting)" << std::endl;
+	else
+		std::cerr << ProgramVersionString << " (exiting)" << std::endl;
+	///////////////////////////////////////////////////////////////////////////////////////////////
 	return 0;
 }

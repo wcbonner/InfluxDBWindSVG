@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cfloat>
+#include <chrono>
 #include <climits>
 #include <cmath>
 #include <csignal>
@@ -12,9 +13,11 @@
 #include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <getopt.h>
 #include <iostream>
 #include <InfluxDBFactory.h>
 #include <cpr/cpr.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <utime.h>
+#include <unistd.h>
