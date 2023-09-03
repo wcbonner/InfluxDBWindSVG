@@ -3,6 +3,10 @@
 
 #pragma once
 
+#include <cfloat>
+#include <climits>
+#include <cmath>
+#include <csignal>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
@@ -11,5 +15,6 @@
 #include <iostream>
 #include <InfluxDBFactory.h>
 #include <cpr/cpr.h>
-
-// TODO: Reference additional headers your program requires here.
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <utime.h>
