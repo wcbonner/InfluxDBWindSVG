@@ -805,16 +805,31 @@ int main(int argc, char** argv)
 		}
 		sigset_t set;
 		sigemptyset(&set);
-		sigaddset(&set, SIGALRM);
 		sigaddset(&set, SIGINT);
 		sigaddset(&set, SIGHUP);
+		siginfo_t sig(0);
+		timespec MyTimeout(60, 0);
 		if (ConsoleVerbosity > 0)
-			std::cout << "[" << getTimeISO8601(true) << "] Alarm Set" << std::endl;
-		alarm(60);
-		int sig = 0;
-		int s = sigwait(&set, &sig);
-		if (sig == SIGALRM)
+			std::cout << "[" << getTimeISO8601(true) << "] Waiting for signal or timeout (" << MyTimeout.tv_sec << " seconds)" << std::endl;
+		int s = sigtimedwait(&set, &sig, &MyTimeout);
+		switch (sig.si_signo)
 		{
+		case SIGINT:
+			if (ConsoleVerbosity > 0)
+				std::cout << "[" << getTimeISO8601(true) << "] ***************** SIGINT: Caught Ctrl-C, finishing loop and quitting. *****************" << std::endl;
+			else
+				std::cerr << "***************** SIGINT: Caught Ctrl-C, finishing loop and quitting. *****************" << std::endl;
+			bRun = false;
+			break;
+		case SIGHUP:
+			bRun = false;
+			if (ConsoleVerbosity > 0)
+				std::cout << "[" << getTimeISO8601(true) << "] ***************** SIGHUP: Caught HangUp, finishing loop and quitting. *****************" << std::endl;
+			else
+				std::cerr << "***************** SIGHUP: Caught HangUp, finishing loop and quitting. *****************" << std::endl;
+			bRun = false;
+			break;
+		default:
 			InfluxDBQuery = std::stringstream(); // reset query string to empty
 			InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '" << timeToExcelDate(InfluxMRTGLog[0].Time) << "'";
 			if (ConsoleVerbosity > 0)
@@ -828,22 +843,6 @@ int main(int argc, char** argv)
 			}
 			if (ConsoleVerbosity > 0)
 				std::cout << " (" << count << " records returned)" << std::endl;
-		}
-		else if (sig == SIGINT)
-		{
-			bRun = false;
-			if (ConsoleVerbosity > 0)
-				std::cout << "[" << getTimeISO8601(true) << "] ***************** SIGINT: Caught Ctrl-C, finishing loop and quitting. *****************" << std::endl;
-			else
-				std::cerr << "***************** SIGINT: Caught Ctrl-C, finishing loop and quitting. *****************" << std::endl;
-		}
-		else if (sig == SIGHUP)
-		{
-			bRun = false;
-			if (ConsoleVerbosity > 0)
-				std::cout << "[" << getTimeISO8601(true) << "] ***************** SIGHUP: Caught HangUp, finishing loop and quitting. *****************" << std::endl;
-			else
-				std::cerr << "***************** SIGHUP: Caught HangUp, finishing loop and quitting. *****************" << std::endl;
 		}
 	}
 	///////////////////////////////////////////////////////////////////////////////////////////////
