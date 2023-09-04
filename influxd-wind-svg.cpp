@@ -30,6 +30,7 @@
 // https://github.com/offa/influxdb-cxx
 // https://github.com/libcpr/cpr
 // https://thenewstack.io/getting-started-with-c-and-influxdb/
+// https://www.w3schools.com/sqL/sql_top.asp Because I've forgotten way too much SQL
 
 #include "influxd-wind-svg.h"
 
@@ -182,6 +183,10 @@ bool ValidateDirectory(const std::filesystem::path& DirectoryName)
 int ConsoleVerbosity(1);
 std::filesystem::path SVGDirectory;	// If this remains empty, SVG Files are not created. If it's specified, _day, _week, _month, and _year.svg files are created for each bluetooth address seen.
 int SVGMinMax(0); // 0x01 = Draw Temperature and Humiditiy Minimum and Maximum line on daily, 0x02 = on weekly, 0x04 = on monthly, 0x08 = on yearly
+std::string InfluxDBHost("localhost");
+std::string InfluxDBDatabase("sola");
+int InfluxDBPort(8086);
+int InfluxDBQueryLimit(40000);
 /////////////////////////////////////////////////////////////////////////////
 // The following details were taken from https://github.com/oetiker/mrtg
 const size_t DAY_COUNT(600);			/* 400 samples is 33.33 hours */
@@ -607,18 +612,21 @@ static void usage(int argc, char** argv)
 	std::cout << "Usage: " << argv[0] << " [options]" << std::endl;
 	std::cout << "  " << ProgramVersionString << std::endl;
 	std::cout << "  Options:" << std::endl;
-	std::cout << "    -h | --help          Print this message" << std::endl;
+	std::cout << "    -? | --help          Print this message" << std::endl;
 	std::cout << "    -v | --verbose level stdout verbosity level [" << ConsoleVerbosity << "]" << std::endl;
 	std::cout << "    -s | --svg name      SVG output directory [" << SVGDirectory << "]" << std::endl;
 	std::cout << "    -x | --minmax graph  Draw the minimum and maximum temperature and humidity status on SVG graphs. 1:daily, 2:weekly, 4:monthly, 8:yearly" << std::endl;
 	std::cout << std::endl;
 }
-static const char short_options[] = "hv:s:x:";
+static const char short_options[] = "?v:s:x:h:p:d:";
 static const struct option long_options[] = {
-		{ "help",   no_argument,       NULL, 'h' },
+		{ "help",   no_argument,       NULL, '?' },
 		{ "verbose",required_argument, NULL, 'v' },
 		{ "svg",	required_argument, NULL, 's' },
 		{ "minmax",	required_argument, NULL, 'x' },
+		{ "host",	required_argument, NULL, 'h' },
+		{ "port",	required_argument, NULL, 'p' },
+		{ "database",required_argument,NULL, 'd' },
 		{ 0, 0, 0, 0 }
 };
 /////////////////////////////////////////////////////////////////////////////
@@ -637,7 +645,6 @@ int main(int argc, char** argv)
 		case 0: /* getopt_long() flag */
 			break;
 		case '?':
-		case 'h':
 			usage(argc, argv);
 			exit(EXIT_SUCCESS);
 		case 'v':
@@ -677,28 +684,30 @@ int main(int argc, char** argv)
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	tzset();
 	///////////////////////////////////////////////////////////////////////////////////////////////
-
-	auto db = influxdb::InfluxDBFactory::Get("http://localhost:8086?db=sola");
-
-	// loop a day at a time starting YEAR_COUNT days ago.
-	for (int day = 440; day > 0; )
+	std::stringstream InfluxDB;
+	InfluxDB << "http://" << InfluxDBHost << ":" << InfluxDBPort << "?db=" << InfluxDBDatabase;
+	if (ConsoleVerbosity > 0)
+		std::cout << "[" << getTimeISO8601(true) << "] " << InfluxDB.str() << std::endl;
+	auto db = influxdb::InfluxDBFactory::Get(InfluxDB.str());
+	std::stringstream InfluxDBQuery;
+	InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > now()-450d LIMIT " << InfluxDBQueryLimit;
+	int RecordsReturned = 0;
+	do 
 	{
-		int count = 0;
-		std::stringstream ssInfluxDBQuery;
-		//auto start{ std::chrono::steady_clock::now() };
-		//ssInfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > now()-" << day << "d AND time < now()-" << --day << "d";
-		ssInfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > now()-" << day << "d AND time < now()-" << --day << "d";
 		if (ConsoleVerbosity > 0)
-			std::cout << "[" << getTimeISO8601(true) << "] " << ssInfluxDBQuery.str();
-		for (auto i : db->query(ssInfluxDBQuery.str()))
+			std::cout << "[" << getTimeISO8601(true) << "] " << InfluxDBQuery.str();
+		RecordsReturned = 0;
+		for (auto i : db->query(InfluxDBQuery.str()))
 		{
 			Influx_Wind myWind(i);
 			UpdateMRTGData(InfluxMRTGLogs, myWind);
-			count++;
+			RecordsReturned++;
 		}
 		if (ConsoleVerbosity > 0)
-			std::cout << " (" << count << " records returned)" << std::endl;
-	}
+			std::cout << " (" << RecordsReturned << " records returned)" << std::endl;
+		InfluxDBQuery = std::stringstream(); // reset query string to empty
+		InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '" << timeToExcelDate(InfluxMRTGLogs[0].Time) << "' LIMIT " << InfluxDBQueryLimit;
+	} while (RecordsReturned > 50);
 
 	bool bRun = true;
 	while (bRun)
@@ -724,7 +733,7 @@ int main(int argc, char** argv)
 		int s = sigwait(&set, &sig);
 		if (sig == SIGALRM)
 		{
-			std::stringstream InfluxDBQuery;
+			InfluxDBQuery = std::stringstream(); // reset query string to empty
 			InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '" << timeToExcelDate(InfluxMRTGLogs[0].Time) << "'";
 			if (ConsoleVerbosity > 0)
 				std::cout << "[" << getTimeISO8601(true) << "] " << InfluxDBQuery.str();
@@ -755,7 +764,6 @@ int main(int argc, char** argv)
 				std::cerr << "***************** SIGHUP: Caught HangUp, finishing loop and quitting. *****************" << std::endl;
 		}
 	}
-
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	if (ConsoleVerbosity > 0)
 		std::cout << "[" << getTimeISO8601(true) << "] " << ProgramVersionString << " (exiting)" << std::endl;
