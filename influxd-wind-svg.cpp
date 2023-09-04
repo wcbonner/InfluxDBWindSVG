@@ -307,7 +307,7 @@ void WriteSVG(std::vector<Influx_Wind>& TheValues, const std::filesystem::path& 
 			if (SVGFile.is_open())
 			{
 				if (ConsoleVerbosity > 0)
-					std::cout << "[" << getTimeISO8601() << "] Writing: " << SVGFileName.string() << " With Title: " << Title << std::endl;
+					std::cout << "[" << getTimeISO8601(true) << "] Writing: " << SVGFileName.string() << " With Title: " << Title << std::endl;
 				else
 					std::cerr << "Writing: " << SVGFileName.string() << " With Title: " << Title << std::endl;
 				std::ostringstream tempOString;
@@ -515,7 +515,7 @@ void UpdateMRTGData(std::vector<Influx_Wind>& FakeMRTGFile, Influx_Wind& TheValu
 		if (DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::year)
 		{
 			if (ConsoleVerbosity > 1)
-				std::cout << "[" << getTimeISO8601() << "] shuffling year " << timeToExcelLocal(DaySampleFirst->Time) << " > " << timeToExcelLocal(YearSampleFirst->Time) << std::endl;
+				std::cout << "[" << getTimeISO8601(true) << "] shuffling year " << timeToExcelLocal(DaySampleFirst->Time) << " > " << timeToExcelLocal(YearSampleFirst->Time) << std::endl;
 			// shuffle all the year samples toward the end
 			std::copy_backward(YearSampleFirst, YearSampleLast - 1, YearSampleLast);
 			*YearSampleFirst = Influx_Wind();
@@ -526,7 +526,7 @@ void UpdateMRTGData(std::vector<Influx_Wind>& FakeMRTGFile, Influx_Wind& TheValu
 			(DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::month))
 		{
 			if (ConsoleVerbosity > 1)
-				std::cout << "[" << getTimeISO8601() << "] shuffling month " << timeToExcelLocal(DaySampleFirst->Time) << std::endl;
+				std::cout << "[" << getTimeISO8601(true) << "] shuffling month " << timeToExcelLocal(DaySampleFirst->Time) << std::endl;
 			// shuffle all the month samples toward the end
 			std::copy_backward(MonthSampleFirst, MonthSampleLast - 1, MonthSampleLast);
 			*MonthSampleFirst = Influx_Wind();
@@ -538,7 +538,7 @@ void UpdateMRTGData(std::vector<Influx_Wind>& FakeMRTGFile, Influx_Wind& TheValu
 			(DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::week))
 		{
 			if (ConsoleVerbosity > 1)
-				std::cout << "[" << getTimeISO8601() << "] shuffling week " << timeToExcelLocal(DaySampleFirst->Time) << std::endl;
+				std::cout << "[" << getTimeISO8601(true) << "] shuffling week " << timeToExcelLocal(DaySampleFirst->Time) << std::endl;
 			// shuffle all the month samples toward the end
 			std::copy_backward(WeekSampleFirst, WeekSampleLast - 1, WeekSampleLast);
 			*WeekSampleFirst = Influx_Wind();
@@ -665,7 +665,7 @@ int main(int argc, char** argv)
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	if (ConsoleVerbosity > 0)
 	{
-		std::cout << "[" << getTimeISO8601() << "] " << ProgramVersionString << std::endl;
+		std::cout << "[" << getTimeISO8601(true) << "] " << ProgramVersionString << std::endl;
 		if (ConsoleVerbosity > 1)
 		{
 			std::cout << "[                   ]      svg: " << SVGDirectory << std::endl;
@@ -689,7 +689,7 @@ int main(int argc, char** argv)
 			
 		ssInfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > now()-" << day << "d AND time < now()-" << --day << "d";
 		if (ConsoleVerbosity > 0)
-			std::cout << "[" << getTimeISO8601() << "] " << ssInfluxDBQuery.str();
+			std::cout << "[" << getTimeISO8601(true) << "] " << ssInfluxDBQuery.str();
 			
 		for (auto i : db->query(ssInfluxDBQuery.str()))
 		{
@@ -720,17 +720,17 @@ int main(int argc, char** argv)
 		sigaddset(&set, SIGHUP);
 		alarm(60);
 		if (ConsoleVerbosity > 0)
-			std::cout << "[" << getTimeISO8601() << "] Alarm Set" << std::endl;
+			std::cout << "[" << getTimeISO8601(true) << "] Alarm Set" << std::endl;
 		int sig = 0;
 		int s = sigwait(&set, &sig);
 		if (sig == SIGALRM)
 		{
 			if (ConsoleVerbosity > 0)
-				std::cout << "[" << getTimeISO8601() << "] Alarm Recieved" << std::endl;
+				std::cout << "[" << getTimeISO8601(true) << "] Alarm Recieved" << std::endl;
 			std::stringstream InfluxDBQuery;
 			InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '" << timeToExcelDate(InfluxMRTGLogs[0].Time) << "'";
 			if (ConsoleVerbosity > 0)
-				std::cout << "[" << getTimeISO8601() << "] " << InfluxDBQuery.str();
+				std::cout << "[" << getTimeISO8601(true) << "] " << InfluxDBQuery.str();
 			int count = 0;
 			for (auto i : db->query(InfluxDBQuery.str()))
 			{
@@ -745,7 +745,7 @@ int main(int argc, char** argv)
 		{
 			bRun = false;
 			if (ConsoleVerbosity > 0)
-				std::cout << "[" << getTimeISO8601() << "] ***************** SIGINT: Caught Ctrl-C, finishing loop and quitting. *****************" << std::endl;
+				std::cout << "[" << getTimeISO8601(true) << "] ***************** SIGINT: Caught Ctrl-C, finishing loop and quitting. *****************" << std::endl;
 			else
 				std::cerr << "***************** SIGINT: Caught Ctrl-C, finishing loop and quitting. *****************" << std::endl;
 		}
@@ -753,7 +753,7 @@ int main(int argc, char** argv)
 		{
 			bRun = false;
 			if (ConsoleVerbosity > 0)
-				std::cout << "[" << getTimeISO8601() << "] ***************** SIGHUP: Caught HangUp, finishing loop and quitting. *****************" << std::endl;
+				std::cout << "[" << getTimeISO8601(true) << "] ***************** SIGHUP: Caught HangUp, finishing loop and quitting. *****************" << std::endl;
 			else
 				std::cerr << "***************** SIGHUP: Caught HangUp, finishing loop and quitting. *****************" << std::endl;
 		}
@@ -761,7 +761,7 @@ int main(int argc, char** argv)
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	if (ConsoleVerbosity > 0)
-		std::cout << "[" << getTimeISO8601() << "] " << ProgramVersionString << " (exiting)" << std::endl;
+		std::cout << "[" << getTimeISO8601(true) << "] " << ProgramVersionString << " (exiting)" << std::endl;
 	else
 		std::cerr << ProgramVersionString << " (exiting)" << std::endl;
 	///////////////////////////////////////////////////////////////////////////////////////////////
