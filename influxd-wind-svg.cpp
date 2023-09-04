@@ -681,47 +681,38 @@ int main(int argc, char** argv)
 	auto db = influxdb::InfluxDBFactory::Get("http://localhost:8086?db=sola");
 
 	// loop a day at a time starting YEAR_COUNT days ago.
-	for (int day = 400; day > 0; )
+	for (int day = 440; day > 0; )
 	{
+		int count = 0;
 		std::stringstream ssInfluxDBQuery;
+		auto start{ std::chrono::steady_clock::now() };
+			
 		ssInfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > now()-" << day << "d AND time < now()-" << --day << "d";
 		if (ConsoleVerbosity > 0)
-			std::cout << "[" << getTimeISO8601() << "] " << ssInfluxDBQuery.str() << std::endl;
+			std::cout << "[" << getTimeISO8601() << "] " << ssInfluxDBQuery.str();
+			
 		for (auto i : db->query(ssInfluxDBQuery.str()))
 		{
 			Influx_Wind myWind(i);
 			UpdateMRTGData(InfluxMRTGLogs, myWind);
+			count++;
 		}
+		if (ConsoleVerbosity > 0)
+			std::cout << " (" << count << " records returned)" << std::endl;
 	}
-
-	std::string InfluxDBQuery;
-	InfluxDBQuery = "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > now()-2d";
-	if (ConsoleVerbosity > 0)
-		std::cout << "[" << getTimeISO8601() << "] " << InfluxDBQuery << std::endl;
-
-	//std::cout << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time >= '2023-09-01 00:00:00' and time < '2023-09-02 00:00:00'" << std::endl;
-	// 	for (auto i : db->query("SELECT value FROM \"environment.wind.speedApparent\" WHERE time >= '2023-09-01 00:00:00' and time < '2023-09-02 00:00:00'"))
-
-	int count = 0;
-	//for (auto i : db->query(InfluxDBQuery))
-	//{
-	//	Influx_Wind myWind(i);
-	//	std::cout << "[" << timeToISO8601(myWind.Time, true) << "] " << myWind.GetApparentWindSpeed() << " (" << ++count << ")" << std::endl;
-	//	UpdateMRTGData(InfluxMRTGLogs, myWind);
-	//}
-	std::vector<Influx_Wind> TheValues;
-	ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::daily);
-	WriteSVG(TheValues, "/home/visualstudio/sola_wind-day.svg", "Sola Apparent Wind Speed", GraphType::daily, true);
-	ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::weekly);
-	WriteSVG(TheValues, "/home/visualstudio/sola_wind-week.svg", "Sola Apparent Wind Speed", GraphType::weekly, true);
-	ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::monthly);
-	WriteSVG(TheValues, "/home/visualstudio/sola_wind-month.svg", "Sola Apparent Wind Speed", GraphType::monthly, true);
-	ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::yearly);
-	WriteSVG(TheValues, "/home/visualstudio/sola_wind-year.svg", "Sola Apparent Wind Speed", GraphType::yearly, true);
 
 	bool bRun = true;
 	while (bRun)
 	{
+		std::vector<Influx_Wind> TheValues;
+		ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::daily);
+		WriteSVG(TheValues, "/var/www/html/mrtg/sola_wind-day.svg", "Sola Apparent Wind Speed", GraphType::daily, true);
+		ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::weekly);
+		WriteSVG(TheValues, "/var/www/html/mrtg/sola_wind-week.svg", "Sola Apparent Wind Speed", GraphType::weekly, true);
+		ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::monthly);
+		WriteSVG(TheValues, "/var/www/html/mrtg/sola_wind-month.svg", "Sola Apparent Wind Speed", GraphType::monthly, true);
+		ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::yearly);
+		WriteSVG(TheValues, "/var/www/html/mrtg/sola_wind-year.svg", "Sola Apparent Wind Speed", GraphType::yearly, true);
 		sigset_t set;
 		sigemptyset(&set);
 		sigaddset(&set, SIGALRM);
@@ -736,25 +727,19 @@ int main(int argc, char** argv)
 		{
 			if (ConsoleVerbosity > 0)
 				std::cout << "[" << getTimeISO8601() << "] Alarm Recieved" << std::endl;
-			InfluxDBQuery = "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '";
-			InfluxDBQuery.append(timeToExcelDate(InfluxMRTGLogs[0].Time));
-			InfluxDBQuery.append("'");
-			std::cout << "[" << getTimeISO8601() << "] " << InfluxDBQuery << std::endl;
+			std::stringstream InfluxDBQuery;
+			InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '" << timeToExcelDate(InfluxMRTGLogs[0].Time) << "'";
+			if (ConsoleVerbosity > 0)
+				std::cout << "[" << getTimeISO8601() << "] " << InfluxDBQuery.str();
 			int count = 0;
-			for (auto i : db->query(InfluxDBQuery))
+			for (auto i : db->query(InfluxDBQuery.str()))
 			{
 				Influx_Wind myWind(i);
-				std::cout << "[" << timeToISO8601(myWind.Time, true) << "] " << myWind.GetApparentWindSpeed() << " (" << ++count << ")" << std::endl;
 				UpdateMRTGData(InfluxMRTGLogs, myWind);
+				count++;
 			}
-			ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::daily);
-			WriteSVG(TheValues, "/home/visualstudio/sola_wind-day.svg", "Sola Apparent Wind Speed", GraphType::daily, true);
-			ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::weekly);
-			WriteSVG(TheValues, "/home/visualstudio/sola_wind-week.svg", "Sola Apparent Wind Speed", GraphType::weekly, true);
-			ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::monthly);
-			WriteSVG(TheValues, "/home/visualstudio/sola_wind-month.svg", "Sola Apparent Wind Speed", GraphType::monthly, true);
-			ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::yearly);
-			WriteSVG(TheValues, "/home/visualstudio/sola_wind-year.svg", "Sola Apparent Wind Speed", GraphType::yearly, true);
+			if (ConsoleVerbosity > 0)
+				std::cout << " (" << count << " records returned)" << std::endl;
 		}
 		else if (sig == SIGINT)
 		{
