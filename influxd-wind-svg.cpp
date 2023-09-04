@@ -685,12 +685,11 @@ int main(int argc, char** argv)
 	{
 		int count = 0;
 		std::stringstream ssInfluxDBQuery;
-		auto start{ std::chrono::steady_clock::now() };
-			
+		//auto start{ std::chrono::steady_clock::now() };
+		//ssInfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > now()-" << day << "d AND time < now()-" << --day << "d";
 		ssInfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > now()-" << day << "d AND time < now()-" << --day << "d";
 		if (ConsoleVerbosity > 0)
 			std::cout << "[" << getTimeISO8601(true) << "] " << ssInfluxDBQuery.str();
-			
 		for (auto i : db->query(ssInfluxDBQuery.str()))
 		{
 			Influx_Wind myWind(i);
@@ -718,15 +717,13 @@ int main(int argc, char** argv)
 		sigaddset(&set, SIGALRM);
 		sigaddset(&set, SIGINT);
 		sigaddset(&set, SIGHUP);
-		alarm(60);
 		if (ConsoleVerbosity > 0)
 			std::cout << "[" << getTimeISO8601(true) << "] Alarm Set" << std::endl;
+		alarm(60);
 		int sig = 0;
 		int s = sigwait(&set, &sig);
 		if (sig == SIGALRM)
 		{
-			if (ConsoleVerbosity > 0)
-				std::cout << "[" << getTimeISO8601(true) << "] Alarm Recieved" << std::endl;
 			std::stringstream InfluxDBQuery;
 			InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '" << timeToExcelDate(InfluxMRTGLogs[0].Time) << "'";
 			if (ConsoleVerbosity > 0)
