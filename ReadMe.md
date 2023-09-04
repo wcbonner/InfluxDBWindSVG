@@ -1,4 +1,4 @@
-I started all of this truing to use https://www.influxdata.com/blog/getting-started-c-influxdb/ as a starting point.
+I started all of this trying to use https://www.influxdata.com/blog/getting-started-c-influxdb/ as a starting point.
 
 It required getting https://github.com/offa/influxdb-cxx up and running, which required this as a prerequisite: https://github.com/libcpr/cpr
 
@@ -234,7 +234,7 @@ In file included from /usr/include/boost/smart_ptr/detail/sp_thread_sleep.hpp:22
                  from /usr/include/boost/asio.hpp:25,
                  from /home/wim/influxdb-cxx/src/UDP.h:33,
                  from /home/wim/influxdb-cxx/src/BoostSupport.cxx:25:
-/usr/include/boost/bind.hpp:36:1: note: ‘#pragma message: The practice of declaring the Bind placeholders (_1, _2, ...) in the global namespace is deprecated. Please use <boost/bind/bind.hpp> + using namespace boost::placeholders, or define BOOST_BIND_GLOBAL_PLACEHOLDERS to retain the current behavior.’
+/usr/include/boost/bind.hpp:36:1: note: Â‘#pragma message: The practice of declaring the Bind placeholders (_1, _2, ...) in the global namespace is deprecated. Please use <boost/bind/bind.hpp> + using namespace boost::placeholders, or define BOOST_BIND_GLOBAL_PLACEHOLDERS to retain the current behavior.Â’
    36 | BOOST_PRAGMA_MESSAGE(
       | ^~~~~~~~~~~~~~~~~~~~
 [ 72%] Building CXX object src/CMakeFiles/InfluxDB-BoostSupport.dir/UDP.cxx.o
