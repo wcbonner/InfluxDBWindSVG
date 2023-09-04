@@ -34,10 +34,8 @@
 
 #include "influxd-wind-svg.h"
 
-using namespace std;
-
 /////////////////////////////////////////////////////////////////////////////
-static const std::string ProgramVersionString("InfluxDBWindSVG Version 1.20230903-1 Built on: " __DATE__ " at " __TIME__);
+static const std::string ProgramVersionString("InfluxDBWindSVG Version 1.20230904-1 Built on: " __DATE__ " at " __TIME__);
 /////////////////////////////////////////////////////////////////////////////
 std::string timeToISO8601(const time_t& TheTime, const bool LocalTime = false)
 {
@@ -187,6 +185,8 @@ std::string InfluxDBHost("localhost");
 std::string InfluxDBDatabase("sola");
 int InfluxDBPort(8086);
 int InfluxDBQueryLimit(40000);
+std::filesystem::path InfluxMRTGCacheFile("/var/cache/InfluxDBWindSVG/influxdbwind.txt"); // Because it takes so long to load all the data from the database, I'm going to cache the MRTG version of the data here.
+time_t InfluxMRTGCacheTime(0);
 /////////////////////////////////////////////////////////////////////////////
 // The following details were taken from https://github.com/oetiker/mrtg
 const size_t DAY_COUNT(600);			/* 400 samples is 33.33 hours */
@@ -205,10 +205,12 @@ public:
 	Influx_Wind(const time_t tim, const double wind)
 	{
 		Time = tim;
-		ApparentWindSpeed = wind;
+		ApparentWindSpeedMax = ApparentWindSpeedMin = ApparentWindSpeed = wind;
 		Averages = 1;
 	};
 	Influx_Wind(const influxdb::Point& data);
+	Influx_Wind(const std::string& data);
+	std::string WriteTXT(const char seperator = '\t') const;
 	double GetApparentWindSpeed(void) const { return(ApparentWindSpeed); };
 	double GetApparentWindSpeedMin(void) const { return(std::min(ApparentWindSpeed, ApparentWindSpeedMin)); };
 	double GetApparentWindSpeedMax(void) const { return(std::max(ApparentWindSpeed, ApparentWindSpeedMax)); };
@@ -231,6 +233,43 @@ Influx_Wind::Influx_Wind(const influxdb::Point& data)
 	value.erase(0, value.find("=") + 1);
 	ApparentWindSpeedMax = ApparentWindSpeedMin = ApparentWindSpeed = std::atof(value.c_str()) * 1.9438445; // data is recorded in m/s and I want it in knots
 	Averages = 1;
+}
+Influx_Wind::Influx_Wind(const std::string& data)
+{
+	std::string TheLine(data);
+	// erase any nulls from the data. these are occasionally in the log file when the platform crashed during a write to the logfile.
+	for (auto pos = TheLine.find('\000'); pos != std::string::npos; pos = TheLine.find('\000'))
+		TheLine.erase(pos);
+	char buffer[256];
+	if (!TheLine.empty() && (TheLine.size() < sizeof(buffer)))
+	{
+		// minor garbage check looking for corrupt data with no tab characters
+		if (TheLine.find('\t') != std::string::npos)
+		{
+			TheLine.copy(buffer, TheLine.size());
+			buffer[TheLine.size()] = '\0';
+			std::string theDate(strtok(buffer, "\t"));
+			Time = ISO8601totime(theDate);
+			std::string theApparentWindSpeed(strtok(NULL, "\t"));
+			ApparentWindSpeed = std::atof(theApparentWindSpeed.c_str());
+			std::string theApparentWindSpeedMin(strtok(NULL, "\t"));
+			ApparentWindSpeedMin = std::atof(theApparentWindSpeedMin.c_str());
+			std::string theApparentWindSpeedMax(strtok(NULL, "\t"));
+			ApparentWindSpeedMax = std::atof(theApparentWindSpeedMax.c_str());
+			std::string theAverages(strtok(NULL, "\t"));
+			Averages = std::atoi(theAverages.c_str());
+		}
+	}
+}
+std::string Influx_Wind::WriteTXT(const char seperator) const
+{
+	std::ostringstream ssValue;
+	ssValue << timeToExcelDate(Time);
+	ssValue << seperator << ApparentWindSpeed;
+	ssValue << seperator << ApparentWindSpeedMin;
+	ssValue << seperator << ApparentWindSpeedMax;
+	ssValue << seperator << Averages;
+	return(ssValue.str());
 }
 void Influx_Wind::SetMinMax(const Influx_Wind& a)
 {
@@ -472,7 +511,7 @@ void WriteSVG(std::vector<Influx_Wind>& TheValues, const std::filesystem::path& 
 	}
 }
 /////////////////////////////////////////////////////////////////////////////
-std::vector<Influx_Wind> InfluxMRTGLogs; // vector structure similar to MRTG Log File
+std::vector<Influx_Wind> InfluxMRTGLog; // vector structure similar to MRTG Log File
 // Takes current datapoint and updates the mapped structure in memory simulating the contents of a MRTG log file.
 void UpdateMRTGData(std::vector<Influx_Wind>& FakeMRTGFile, Influx_Wind& TheValue)
 {
@@ -519,7 +558,7 @@ void UpdateMRTGData(std::vector<Influx_Wind>& FakeMRTGFile, Influx_Wind& TheValu
 			DaySampleFirst->Time = (DaySampleFirst + 1)->Time + DAY_SAMPLE;
 		if (DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::year)
 		{
-			if (ConsoleVerbosity > 1)
+			if (ConsoleVerbosity > 2)
 				std::cout << "[" << getTimeISO8601(true) << "] shuffling year " << timeToExcelLocal(DaySampleFirst->Time) << " > " << timeToExcelLocal(YearSampleFirst->Time) << std::endl;
 			// shuffle all the year samples toward the end
 			std::copy_backward(YearSampleFirst, YearSampleLast - 1, YearSampleLast);
@@ -530,7 +569,7 @@ void UpdateMRTGData(std::vector<Influx_Wind>& FakeMRTGFile, Influx_Wind& TheValu
 		if ((DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::year) ||
 			(DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::month))
 		{
-			if (ConsoleVerbosity > 1)
+			if (ConsoleVerbosity > 2)
 				std::cout << "[" << getTimeISO8601(true) << "] shuffling month " << timeToExcelLocal(DaySampleFirst->Time) << std::endl;
 			// shuffle all the month samples toward the end
 			std::copy_backward(MonthSampleFirst, MonthSampleLast - 1, MonthSampleLast);
@@ -542,7 +581,7 @@ void UpdateMRTGData(std::vector<Influx_Wind>& FakeMRTGFile, Influx_Wind& TheValu
 			(DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::month) ||
 			(DaySampleFirst->GetTimeGranularity() == Influx_Wind::granularity::week))
 		{
-			if (ConsoleVerbosity > 1)
+			if (ConsoleVerbosity > 2)
 				std::cout << "[" << getTimeISO8601(true) << "] shuffling week " << timeToExcelLocal(DaySampleFirst->Time) << std::endl;
 			// shuffle all the month samples toward the end
 			std::copy_backward(WeekSampleFirst, WeekSampleLast - 1, WeekSampleLast);
@@ -618,7 +657,7 @@ static void usage(int argc, char** argv)
 	std::cout << "    -x | --minmax graph  Draw the minimum and maximum temperature and humidity status on SVG graphs. 1:daily, 2:weekly, 4:monthly, 8:yearly" << std::endl;
 	std::cout << std::endl;
 }
-static const char short_options[] = "?v:s:x:h:p:d:";
+static const char short_options[] = "?v:s:x:h:p:d:c:";
 static const struct option long_options[] = {
 		{ "help",   no_argument,       NULL, '?' },
 		{ "verbose",required_argument, NULL, 'v' },
@@ -627,6 +666,7 @@ static const struct option long_options[] = {
 		{ "host",	required_argument, NULL, 'h' },
 		{ "port",	required_argument, NULL, 'p' },
 		{ "database",required_argument,NULL, 'd' },
+		{ "cache",  required_argument, NULL, 'c' },
 		{ 0, 0, 0, 0 }
 };
 /////////////////////////////////////////////////////////////////////////////
@@ -670,6 +710,11 @@ int main(int argc, char** argv)
 		}
 	}
 	///////////////////////////////////////////////////////////////////////////////////////////////
+#ifndef NDEBUG
+	ConsoleVerbosity++;
+#endif // NDEBUG
+
+	///////////////////////////////////////////////////////////////////////////////////////////////
 	if (ConsoleVerbosity > 0)
 	{
 		std::cout << "[" << getTimeISO8601(true) << "] " << ProgramVersionString << std::endl;
@@ -677,6 +722,10 @@ int main(int argc, char** argv)
 		{
 			std::cout << "[                   ]      svg: " << SVGDirectory << std::endl;
 			std::cout << "[                   ]   minmax: " << SVGMinMax << std::endl;
+			std::cout << "[                   ]     host: " << InfluxDBHost << std::endl;
+			std::cout << "[                   ]     port: " << InfluxDBPort << std::endl;
+			std::cout << "[                   ] database: " << InfluxDBDatabase << std::endl;
+			std::cout << "[                   ]    cache: " << InfluxMRTGCacheFile << std::endl;
 		}
 	}
 	else
@@ -684,14 +733,32 @@ int main(int argc, char** argv)
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	tzset();
 	///////////////////////////////////////////////////////////////////////////////////////////////
+	std::ifstream TheFile(InfluxMRTGCacheFile);
+	if (TheFile.is_open())
+	{
+		if (ConsoleVerbosity > 0)
+			std::cout << "[" << getTimeISO8601(true) << "] Reading: " << InfluxMRTGCacheFile.string() << std::endl;
+		else
+			std::cerr << "Reading: " << InfluxMRTGCacheFile.string() << std::endl;
+		std::string TheLine;
+		while (std::getline(TheFile, TheLine))
+			InfluxMRTGLog.push_back(Influx_Wind(TheLine));
+		TheFile.close();
+		if (!InfluxMRTGLog.empty())
+			InfluxMRTGCacheTime = InfluxMRTGLog[0].Time;
+	}
+	///////////////////////////////////////////////////////////////////////////////////////////////
 	std::stringstream InfluxDB;
 	InfluxDB << "http://" << InfluxDBHost << ":" << InfluxDBPort << "?db=" << InfluxDBDatabase;
 	if (ConsoleVerbosity > 0)
 		std::cout << "[" << getTimeISO8601(true) << "] " << InfluxDB.str() << std::endl;
 	auto db = influxdb::InfluxDBFactory::Get(InfluxDB.str());
 	std::stringstream InfluxDBQuery;
-	InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > now()-450d LIMIT " << InfluxDBQueryLimit;
-	int RecordsReturned = 0;
+	if (InfluxMRTGLog.empty())
+		InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > now()-450d LIMIT " << InfluxDBQueryLimit;
+	else
+		InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '" << timeToExcelDate(InfluxMRTGLog[0].Time) << "' LIMIT " << InfluxDBQueryLimit;
+	int RecordsReturned(0);
 	do 
 	{
 		if (ConsoleVerbosity > 0)
@@ -700,27 +767,42 @@ int main(int argc, char** argv)
 		for (auto i : db->query(InfluxDBQuery.str()))
 		{
 			Influx_Wind myWind(i);
-			UpdateMRTGData(InfluxMRTGLogs, myWind);
+			UpdateMRTGData(InfluxMRTGLog, myWind);
 			RecordsReturned++;
 		}
 		if (ConsoleVerbosity > 0)
 			std::cout << " (" << RecordsReturned << " records returned)" << std::endl;
 		InfluxDBQuery = std::stringstream(); // reset query string to empty
-		InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '" << timeToExcelDate(InfluxMRTGLogs[0].Time) << "' LIMIT " << InfluxDBQueryLimit;
+		InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '" << timeToExcelDate(InfluxMRTGLog[0].Time) << "' LIMIT " << InfluxDBQueryLimit;
 	} while (RecordsReturned > 50);
 
 	bool bRun = true;
 	while (bRun)
 	{
 		std::vector<Influx_Wind> TheValues;
-		ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::daily);
+		ReadMRTGData(InfluxMRTGLog, TheValues, GraphType::daily);
 		WriteSVG(TheValues, "/var/www/html/mrtg/sola_wind-day.svg", "Sola Apparent Wind Speed", GraphType::daily, true);
-		ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::weekly);
+		ReadMRTGData(InfluxMRTGLog, TheValues, GraphType::weekly);
 		WriteSVG(TheValues, "/var/www/html/mrtg/sola_wind-week.svg", "Sola Apparent Wind Speed", GraphType::weekly, true);
-		ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::monthly);
+		ReadMRTGData(InfluxMRTGLog, TheValues, GraphType::monthly);
 		WriteSVG(TheValues, "/var/www/html/mrtg/sola_wind-month.svg", "Sola Apparent Wind Speed", GraphType::monthly, true);
-		ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::yearly);
+		ReadMRTGData(InfluxMRTGLog, TheValues, GraphType::yearly);
 		WriteSVG(TheValues, "/var/www/html/mrtg/sola_wind-year.svg", "Sola Apparent Wind Speed", GraphType::yearly, true);
+		if (difftime(InfluxMRTGLog[0].Time, InfluxMRTGCacheTime) > 30 * 60) // If Cache File has data older than 60 minutes, write it
+		{
+			std::ofstream LogFile(InfluxMRTGCacheFile, std::ios_base::out | std::ios_base::trunc);
+			if (LogFile.is_open())
+			{
+				if (ConsoleVerbosity > 0)
+					std::cout << "[" << getTimeISO8601(true) << "] Writing: " << InfluxMRTGCacheFile.string() << std::endl;
+				else
+					std::cerr << "Writing: " << InfluxMRTGCacheFile.string() << std::endl;
+				for (auto i : InfluxMRTGLog)
+					LogFile << i.WriteTXT() << std::endl;
+				LogFile.close();
+				InfluxMRTGCacheTime = InfluxMRTGLog[0].Time;
+			}
+		}
 		sigset_t set;
 		sigemptyset(&set);
 		sigaddset(&set, SIGALRM);
@@ -734,14 +816,14 @@ int main(int argc, char** argv)
 		if (sig == SIGALRM)
 		{
 			InfluxDBQuery = std::stringstream(); // reset query string to empty
-			InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '" << timeToExcelDate(InfluxMRTGLogs[0].Time) << "'";
+			InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '" << timeToExcelDate(InfluxMRTGLog[0].Time) << "'";
 			if (ConsoleVerbosity > 0)
 				std::cout << "[" << getTimeISO8601(true) << "] " << InfluxDBQuery.str();
 			int count = 0;
 			for (auto i : db->query(InfluxDBQuery.str()))
 			{
 				Influx_Wind myWind(i);
-				UpdateMRTGData(InfluxMRTGLogs, myWind);
+				UpdateMRTGData(InfluxMRTGLog, myWind);
 				count++;
 			}
 			if (ConsoleVerbosity > 0)
