@@ -646,6 +646,18 @@ void ReadMRTGData(const std::vector<Influx_Wind>& FakeMRTGFile, std::vector<Infl
 	}
 }
 /////////////////////////////////////////////////////////////////////////////
+volatile bool bRun = true; // This is declared volatile so that the compiler won't optimized it out of loops later in the code
+void SignalHandlerSIGINT(int signal)
+{
+	bRun = false;
+	std::cerr << "***************** SIGINT: Caught Ctrl-C, finishing loop and quitting. *****************" << std::endl;
+}
+void SignalHandlerSIGHUP(int signal)
+{
+	bRun = false;
+	std::cerr << "***************** SIGHUP: Caught HangUp, finishing loop and quitting. *****************" << std::endl;
+}
+/////////////////////////////////////////////////////////////////////////////
 static void usage(int argc, char** argv)
 {
 	std::cout << "Usage: " << argv[0] << " [options]" << std::endl;
@@ -776,7 +788,8 @@ int main(int argc, char** argv)
 		InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '" << timeToExcelDate(InfluxMRTGLog[0].Time) << "' LIMIT " << InfluxDBQueryLimit;
 	} while (RecordsReturned > 50);
 
-	bool bRun = true;
+	auto previousHandlerSIGINT = signal(SIGINT, SignalHandlerSIGINT);	// Install CTR-C signal handler
+	auto previousHandlerSIGHUP = signal(SIGHUP, SignalHandlerSIGHUP);	// Install Hangup signal handler
 	while (bRun)
 	{
 		std::vector<Influx_Wind> TheValues;
@@ -845,6 +858,8 @@ int main(int argc, char** argv)
 				std::cout << " (" << count << " records returned)" << std::endl;
 		}
 	}
+	signal(SIGHUP, previousHandlerSIGHUP);	// Restore original Hangup signal handler
+	signal(SIGINT, previousHandlerSIGINT);	// Restore original Ctrl-C signal handler
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	if (ConsoleVerbosity > 0)
 		std::cout << "[" << getTimeISO8601(true) << "] " << ProgramVersionString << " (exiting)" << std::endl;
