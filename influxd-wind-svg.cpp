@@ -681,7 +681,7 @@ int main(int argc, char** argv)
 	auto db = influxdb::InfluxDBFactory::Get("http://localhost:8086?db=sola");
 
 	// loop a day at a time starting YEAR_COUNT days ago.
-	for (int day = YEAR_COUNT; day > 0; )
+	for (int day = 400; day > 0; )
 	{
 		std::stringstream ssInfluxDBQuery;
 		ssInfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > now()-" << day << "d AND time < now()-" << --day << "d";
@@ -703,12 +703,12 @@ int main(int argc, char** argv)
 	// 	for (auto i : db->query("SELECT value FROM \"environment.wind.speedApparent\" WHERE time >= '2023-09-01 00:00:00' and time < '2023-09-02 00:00:00'"))
 
 	int count = 0;
-	for (auto i : db->query(InfluxDBQuery))
-	{
-		Influx_Wind myWind(i);
-		std::cout << "[" << timeToISO8601(myWind.Time, true) << "] " << myWind.GetApparentWindSpeed() << " (" << ++count << ")" << std::endl;
-		UpdateMRTGData(InfluxMRTGLogs, myWind);
-	}
+	//for (auto i : db->query(InfluxDBQuery))
+	//{
+	//	Influx_Wind myWind(i);
+	//	std::cout << "[" << timeToISO8601(myWind.Time, true) << "] " << myWind.GetApparentWindSpeed() << " (" << ++count << ")" << std::endl;
+	//	UpdateMRTGData(InfluxMRTGLogs, myWind);
+	//}
 	std::vector<Influx_Wind> TheValues;
 	ReadMRTGData(InfluxMRTGLogs, TheValues, GraphType::daily);
 	WriteSVG(TheValues, "/home/visualstudio/sola_wind-day.svg", "Sola Apparent Wind Speed", GraphType::daily, true);
@@ -740,7 +740,7 @@ int main(int argc, char** argv)
 			InfluxDBQuery.append(timeToExcelDate(InfluxMRTGLogs[0].Time));
 			InfluxDBQuery.append("'");
 			std::cout << "[" << getTimeISO8601() << "] " << InfluxDBQuery << std::endl;
-			count = 0;
+			int count = 0;
 			for (auto i : db->query(InfluxDBQuery))
 			{
 				Influx_Wind myWind(i);
