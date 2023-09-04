@@ -1,0 +1,22 @@
+# Contents of /etc/systemd/system/goveebttemplogger.service
+[Unit]
+Description=InfluxDBWindSVG service
+After=influxdb.service
+Requires=influxdb.service
+StartLimitBurst=5
+StartLimitIntervalSec=33
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+Environment="VERBOSITY=0"
+Environment="LOGDIR=/var/log/goveebttemplogger"
+Environment="TIME=60"
+Environment="SVGARGS=--svg /var/www/html/goveebttemplogger/ --battery 8 --minmax 8 --titlemap /var/www/html/goveebttemplogger/gvh-titlemap.txt"
+Environment="EXTRAARGS=--download"
+ExecStart=/usr/local/bin/influxdbwindsvg -v ${VERBOSITY} --log ${LOGDIR} --time ${TIME} $SVGARGS $EXTRAARGS
+KillSignal=SIGINT
+
+[Install]
+WantedBy=multi-user.target
