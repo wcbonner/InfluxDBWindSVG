@@ -722,11 +722,6 @@ int main(int argc, char** argv)
 		}
 	}
 	///////////////////////////////////////////////////////////////////////////////////////////////
-#ifndef NDEBUG
-	ConsoleVerbosity++;
-#endif // NDEBUG
-
-	///////////////////////////////////////////////////////////////////////////////////////////////
 	if (ConsoleVerbosity > 0)
 	{
 		std::cout << "[" << getTimeISO8601(true) << "] " << ProgramVersionString << std::endl;
@@ -801,7 +796,7 @@ int main(int argc, char** argv)
 		WriteSVG(TheValues, "/var/www/html/mrtg/sola_wind-month.svg", "Sola Apparent Wind Speed", GraphType::monthly, true);
 		ReadMRTGData(InfluxMRTGLog, TheValues, GraphType::yearly);
 		WriteSVG(TheValues, "/var/www/html/mrtg/sola_wind-year.svg", "Sola Apparent Wind Speed", GraphType::yearly, true);
-		if (difftime(InfluxMRTGLog[0].Time, InfluxMRTGCacheTime) > 30 * 60) // If Cache File has data older than 60 minutes, write it
+		if (difftime(InfluxMRTGLog[0].Time, InfluxMRTGCacheTime) > 60 * 60) // If Cache File has data older than 60 minutes, write it
 		{
 			std::ofstream LogFile(InfluxMRTGCacheFile, std::ios_base::out | std::ios_base::trunc);
 			if (LogFile.is_open())
@@ -821,7 +816,7 @@ int main(int argc, char** argv)
 		sigaddset(&set, SIGINT);
 		sigaddset(&set, SIGHUP);
 		siginfo_t sig(0);
-		timespec MyTimeout(60, 0);
+		timespec MyTimeout(5*60, 0);
 		if (ConsoleVerbosity > 0)
 			std::cout << "[" << getTimeISO8601(true) << "] Waiting for signal or timeout (" << MyTimeout.tv_sec << " seconds)" << std::endl;
 		int s = sigtimedwait(&set, &sig, &MyTimeout);
@@ -835,7 +830,6 @@ int main(int argc, char** argv)
 			bRun = false;
 			break;
 		case SIGHUP:
-			bRun = false;
 			if (ConsoleVerbosity > 0)
 				std::cout << "[" << getTimeISO8601(true) << "] ***************** SIGHUP: Caught HangUp, finishing loop and quitting. *****************" << std::endl;
 			else
