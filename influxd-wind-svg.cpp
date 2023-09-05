@@ -33,9 +33,10 @@
 // https://www.w3schools.com/sqL/sql_top.asp Because I've forgotten way too much SQL
 
 #include "influxd-wind-svg.h"
+#include "influxdbwindsvg-version.h"
 
 /////////////////////////////////////////////////////////////////////////////
-static const std::string ProgramVersionString("InfluxDBWindSVG Version 1.20230904-1 Built on: " __DATE__ " at " __TIME__);
+static const std::string ProgramVersionString("InfluxDBWindSVG Version " influxdbwindsvg_VERSION_MAJOR "." influxdbwindsvg_VERSION_MINOR "-" influxdbwindsvg_VERSION_PATCH " Built on: " __DATE__ " at " __TIME__);
 /////////////////////////////////////////////////////////////////////////////
 std::string timeToISO8601(const time_t& TheTime, const bool LocalTime = false)
 {

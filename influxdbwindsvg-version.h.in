@@ -1,0 +1,6 @@
+#pragma once
+#define QUOTE(x) #x
+#define STR(x) QUOTE(x)
+#define influxdbwindsvg_VERSION_MAJOR STR(@influxdbwindsvg_VERSION_MAJOR@)
+#define influxdbwindsvg_VERSION_MINOR STR(@influxdbwindsvg_VERSION_MINOR@)
+#define influxdbwindsvg_VERSION_PATCH STR(@influxdbwindsvg_VERSION_PATCH@)
