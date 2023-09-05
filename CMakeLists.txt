@@ -9,16 +9,16 @@ if (POLICY CMP0141)
   set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
 endif()
 
-project ("influxd-wind-svg")
+project ("influxdbwindsvg")
 
 # Add source to this project's executable.
-add_executable (influxd-wind-svg "influxd-wind-svg.cpp" "influxd-wind-svg.h")
+add_executable (influxdbwindsvg "influxd-wind-svg.cpp" "influxd-wind-svg.h")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET influxd-wind-svg PROPERTY CXX_STANDARD 20)
+  set_property(TARGET influxdbwindsvg PROPERTY CXX_STANDARD 20)
 endif()
 
 # TODO: Add tests and install targets if needed.
 
 find_package(InfluxDB)
-target_link_libraries(influxd-wind-svg PRIVATE InfluxData::InfluxDB)
+target_link_libraries(influxdbwindsvg PRIVATE InfluxData::InfluxDB)
