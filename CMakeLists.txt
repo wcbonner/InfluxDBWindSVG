@@ -31,5 +31,5 @@ target_include_directories(influxdbwindsvg PUBLIC
 
 # TODO: Add tests and install targets if needed.
 
-find_package(InfluxDB)
+find_package(InfluxDB REQUIRED)
 target_link_libraries(influxdbwindsvg PRIVATE InfluxData::InfluxDB)

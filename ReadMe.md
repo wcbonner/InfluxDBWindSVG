@@ -1,7 +1,43 @@
+# InfluxDBWindSVG
+Retrieves Apparent Wind Data from Influx database and writes it to MRTG style SVG graphs.
+
+![Image](./sola_wind-day.svg)
+
+The apparent wind data is inserted into my database from an existing SignalK https://github.com/SignalK instance recieving data from the instruments on my boat.
+
+## Details
+
 I started all of this trying to use https://www.influxdata.com/blog/getting-started-c-influxdb/ as a starting point.
 
 It required getting https://github.com/offa/influxdb-cxx up and running, which required this as a prerequisite: https://github.com/libcpr/cpr
 
+### Here's a set of commands that can build from scratch
+#### cpr
+```
+git clone https://github.com/libcpr/cpr.git
+mkdir cpr/build && pushd cpr/build
+cmake .. -DCPR_USE_SYSTEM_CURL=ON
+cmake --build .
+sudo cmake --install .
+popd
+```
+#### influxdb-cxx
+```
+git clone https://github.com/offa/influxdb-cxx
+mkdir influxdb-cxx/build && pushd influxdb-cxx/build
+cmake -D INFLUXCXX_TESTING:BOOL=OFF ..
+sudo make install
+popd
+```
+#### InfluxDBWindSVG
+```
+git clone https://github.com/wcbonner/InfluxDBWindSVG.git
+cmake -S InfluxDBWindSVG -B InfluxDBWindSVG/build
+pushd InfluxDBWindSVG/build && make && popd
+InfluxDBWindSVG/build/influxdbwindsvg
+```
+
+### Below is a log of what I did
 ```
 wim@WimPi4-Sola:~ $ git clone https://github.com/libcpr/cpr.git
 Cloning into 'cpr'...
