@@ -33,3 +33,15 @@ target_include_directories(influxdbwindsvg PUBLIC
 
 find_package(InfluxDB REQUIRED)
 target_link_libraries(influxdbwindsvg PRIVATE InfluxData::InfluxDB)
+
+install(TARGETS influxdbwindsvg DESTINATION bin)
+
+#enable_testing()
+#add_test(NAME Runs COMMAND influxdbwindsvg --help)
+
+include(InstallRequiredSystemLibraries)
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt")
+set(CPACK_PACKAGE_VERSION_MAJOR "${influxdbwindsvg_VERSION_MAJOR}")
+set(CPACK_PACKAGE_VERSION_MINOR "${influxdbwindsvg_VERSION_MINOR}")
+# set(CPACK_SOURCE_GENERATOR "TGZ")
+include(CPack)
