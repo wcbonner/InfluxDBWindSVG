@@ -34,7 +34,11 @@ target_include_directories(influxdbwindsvg PUBLIC
 find_package(InfluxDB REQUIRED)
 target_link_libraries(influxdbwindsvg PRIVATE InfluxData::InfluxDB)
 
-install(TARGETS influxdbwindsvg DESTINATION bin)
+install(TARGETS influxdbwindsvg 
+    DESTINATION bin
+    RUNTIME DESTINATION "/usr/local/bin/"
+    LIBRARY DESTINATION "/usr/local/lib/"
+)
 
 # Going through https://cmake.org/cmake/help/latest/guide/tutorial/index.html#guide:CMake%20Tutorial
 
@@ -42,8 +46,9 @@ install(TARGETS influxdbwindsvg DESTINATION bin)
 #add_test(NAME Runs COMMAND influxdbwindsvg --help)
 
 include(InstallRequiredSystemLibraries)
+set(CPACK_SOURCE_GENERATOR "DEB")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt")
 set(CPACK_PACKAGE_VERSION_MAJOR "${influxdbwindsvg_VERSION_MAJOR}")
 set(CPACK_PACKAGE_VERSION_MINOR "${influxdbwindsvg_VERSION_MINOR}")
-set(CPACK_SOURCE_GENERATOR "TGZ")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "William C Bonner")
 include(CPack)
