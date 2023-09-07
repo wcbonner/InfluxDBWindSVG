@@ -809,6 +809,7 @@ int main(int argc, char** argv)
 		std::string SVGTitle("Apparent Wind Speed");
 		SVGTitle.insert(0, " ");
 		SVGTitle.insert(0, InfluxDBDatabase);
+		SVGTitle.front() = std::toupper(SVGTitle.front());
 		std::vector<Influx_Wind> TheValues;
 		std::filesystem::path OutputPath;
 		std::ostringstream OutputFilename;
