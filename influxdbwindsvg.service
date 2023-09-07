@@ -11,12 +11,10 @@ Type=simple
 Restart=always
 RestartSec=5
 Environment="VERBOSITY=0"
-Environment="LOGDIR=/var/log/goveebttemplogger"
-Environment="TIME=60"
-Environment="SVGARGS=--svg /var/www/html/goveebttemplogger/ --battery 8 --minmax 8 --titlemap /var/www/html/goveebttemplogger/gvh-titlemap.txt"
-Environment="EXTRAARGS=--download"
-# ExecStart=/usr/local/bin/influxdbwindsvg -v ${VERBOSITY} --log ${LOGDIR} --time ${TIME} $SVGARGS $EXTRAARGS
-ExecStart=/usr/local/bin/influxdbwindsvg -v ${VERBOSITY}
+Environment="DBARGS=--host localhost --port 8086 --database sola"
+Environment="SVGARGS=--svg /var/www/html/mrtg --minmax 15"
+Environment="EXTRAARGS=--cache /var/cache/InfluxDBWindSVG/influxdbwind.txt"
+ExecStart=/usr/local/bin/influxdbwindsvg -v ${VERBOSITY} $DBARGS $SVGARGS $EXTRAARGS
 KillSignal=SIGINT
 
 [Install]

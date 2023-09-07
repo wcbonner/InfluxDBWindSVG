@@ -668,6 +668,10 @@ static void usage(int argc, char** argv)
 	std::cout << "    -v | --verbose level stdout verbosity level [" << ConsoleVerbosity << "]" << std::endl;
 	std::cout << "    -s | --svg name      SVG output directory [" << SVGDirectory << "]" << std::endl;
 	std::cout << "    -x | --minmax graph  Draw the minimum and maximum temperature and humidity status on SVG graphs. 1:daily, 2:weekly, 4:monthly, 8:yearly" << std::endl;
+	std::cout << "    -h | --host name     InfluxDBHost [" << InfluxDBHost << "]" << std::endl;
+	std::cout << "    -p | --port number   InfluxDBPort [" << InfluxDBPort << "]" << std::endl;
+	std::cout << "    -d | --database name InfluxDBDatabase [" << InfluxDBDatabase << "]" << std::endl;
+	std::cout << "    -c | --cache name    InfluxMRTGCacheFile [" << InfluxMRTGCacheFile << "]" << std::endl;
 	std::cout << std::endl;
 }
 static const char short_options[] = "?v:s:x:h:p:d:c:";
@@ -716,6 +720,20 @@ int main(int argc, char** argv)
 			try { SVGMinMax = std::stoi(optarg); }
 			catch (const std::invalid_argument& ia) { std::cerr << "Invalid argument: " << ia.what() << std::endl; exit(EXIT_FAILURE); }
 			catch (const std::out_of_range& oor) { std::cerr << "Out of Range error: " << oor.what() << std::endl; exit(EXIT_FAILURE); }
+			break;
+		case 'h':
+			InfluxDBHost = std::string(optarg);
+			break;
+		case 'p':
+			try { InfluxDBPort = std::stoi(optarg); }
+			catch (const std::invalid_argument& ia) { std::cerr << "Invalid argument: " << ia.what() << std::endl; exit(EXIT_FAILURE); }
+			catch (const std::out_of_range& oor) { std::cerr << "Out of Range error: " << oor.what() << std::endl; exit(EXIT_FAILURE); }
+			break;
+		case 'd':
+			InfluxDBDatabase = std::string(optarg);
+			break;
+		case 'c':
+			InfluxMRTGCacheFile = std::string(optarg);
 			break;
 		default:
 			usage(argc, argv);
@@ -788,15 +806,36 @@ int main(int argc, char** argv)
 	auto previousHandlerSIGHUP = signal(SIGHUP, SignalHandlerSIGHUP);	// Install Hangup signal handler
 	while (bRun)
 	{
+		std::string SVGTitle("Apparent Wind Speed");
+		SVGTitle.insert(0, " ");
+		SVGTitle.insert(0, InfluxDBDatabase);
 		std::vector<Influx_Wind> TheValues;
+		std::filesystem::path OutputPath;
+		std::ostringstream OutputFilename;
+		OutputFilename.str("");
+		OutputFilename << InfluxDBDatabase;
+		OutputFilename << "_wind-day.svg";
+		OutputPath = SVGDirectory / OutputFilename.str();
 		ReadMRTGData(InfluxMRTGLog, TheValues, GraphType::daily);
-		WriteSVG(TheValues, "/var/www/html/mrtg/sola_wind-day.svg", "Sola Apparent Wind Speed", GraphType::daily, true);
+		WriteSVG(TheValues, OutputPath, SVGTitle, GraphType::daily, true);
+		OutputFilename.str("");
+		OutputFilename << InfluxDBDatabase;
+		OutputFilename << "_wind-week.svg";
+		OutputPath = SVGDirectory / OutputFilename.str();
 		ReadMRTGData(InfluxMRTGLog, TheValues, GraphType::weekly);
-		WriteSVG(TheValues, "/var/www/html/mrtg/sola_wind-week.svg", "Sola Apparent Wind Speed", GraphType::weekly, true);
+		WriteSVG(TheValues, OutputPath, SVGTitle, GraphType::weekly, true);
+		OutputFilename.str("");
+		OutputFilename << InfluxDBDatabase;
+		OutputFilename << "_wind-month.svg";
+		OutputPath = SVGDirectory / OutputFilename.str();
 		ReadMRTGData(InfluxMRTGLog, TheValues, GraphType::monthly);
-		WriteSVG(TheValues, "/var/www/html/mrtg/sola_wind-month.svg", "Sola Apparent Wind Speed", GraphType::monthly, true);
+		WriteSVG(TheValues, OutputPath, SVGTitle, GraphType::monthly, true);
+		OutputFilename.str("");
+		OutputFilename << InfluxDBDatabase;
+		OutputFilename << "_wind-year.svg";
+		OutputPath = SVGDirectory / OutputFilename.str();
 		ReadMRTGData(InfluxMRTGLog, TheValues, GraphType::yearly);
-		WriteSVG(TheValues, "/var/www/html/mrtg/sola_wind-year.svg", "Sola Apparent Wind Speed", GraphType::yearly, true);
+		WriteSVG(TheValues, OutputPath, SVGTitle, GraphType::yearly, true);
 		if (difftime(InfluxMRTGLog[0].Time, InfluxMRTGCacheTime) > 60 * 60) // If Cache File has data older than 60 minutes, write it
 		{
 			std::ofstream LogFile(InfluxMRTGCacheFile, std::ios_base::out | std::ios_base::trunc);
