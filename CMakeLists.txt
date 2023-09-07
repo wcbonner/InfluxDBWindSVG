@@ -9,9 +9,9 @@ if (POLICY CMP0141)
   set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
 endif()
 
-project ("influxdbwindsvg" 
-    VERSION 1.20230905.1 
-    DESCRIPTION "Retrieves Apparent Wind Data from Influx Database and creates SVG files" 
+project ("influxdbwindsvg"
+    VERSION 1.20230906.1
+    DESCRIPTION "Retrieves Apparent Wind Data from Influx Database and creates SVG files"
     HOMEPAGE_URL https://github.com/wcbonner/InfluxDBWindSVG
 )
 
@@ -34,7 +34,7 @@ target_include_directories(influxdbwindsvg PUBLIC
 find_package(InfluxDB REQUIRED)
 target_link_libraries(influxdbwindsvg PRIVATE InfluxData::InfluxDB)
 
-install(TARGETS influxdbwindsvg 
+install(TARGETS influxdbwindsvg
     DESTINATION bin
     RUNTIME DESTINATION "/usr/local/bin/"
     LIBRARY DESTINATION "/usr/local/lib/"
@@ -45,10 +45,10 @@ install(TARGETS influxdbwindsvg
 #enable_testing()
 #add_test(NAME Runs COMMAND influxdbwindsvg --help)
 
+set(CPACK_GENERATOR "DEB")
 include(InstallRequiredSystemLibraries)
-set(CPACK_SOURCE_GENERATOR "DEB")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt")
-set(CPACK_PACKAGE_VERSION_MAJOR "${influxdbwindsvg_VERSION_MAJOR}")
-set(CPACK_PACKAGE_VERSION_MINOR "${influxdbwindsvg_VERSION_MINOR}")
-set(CPACK_DEBIAN_PACKAGE_MAINTAINER "William C Bonner")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS curl,influxdb)
+set(CPACK_DEBIAN_PACKAGE_SECTION custom)
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "wcbonner@users.noreply.github.com")
 include(CPack)
