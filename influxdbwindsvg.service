@@ -15,7 +15,8 @@ Environment="LOGDIR=/var/log/goveebttemplogger"
 Environment="TIME=60"
 Environment="SVGARGS=--svg /var/www/html/goveebttemplogger/ --battery 8 --minmax 8 --titlemap /var/www/html/goveebttemplogger/gvh-titlemap.txt"
 Environment="EXTRAARGS=--download"
-ExecStart=/usr/local/bin/influxdbwindsvg -v ${VERBOSITY} --log ${LOGDIR} --time ${TIME} $SVGARGS $EXTRAARGS
+# ExecStart=/usr/local/bin/influxdbwindsvg -v ${VERBOSITY} --log ${LOGDIR} --time ${TIME} $SVGARGS $EXTRAARGS
+ExecStart=/usr/local/bin/influxdbwindsvg -v ${VERBOSITY}
 KillSignal=SIGINT
 
 [Install]

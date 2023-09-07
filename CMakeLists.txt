@@ -40,6 +40,11 @@ install(TARGETS influxdbwindsvg
     LIBRARY DESTINATION "/usr/local/lib/"
 )
 
+install(FILES "influxdbwindsvg.service"
+    DESTINATION "/usr/local/lib/systemd/system"
+    COMPONENT "influxdbwindsvg"
+)
+
 # Going through https://cmake.org/cmake/help/latest/guide/tutorial/index.html#guide:CMake%20Tutorial
 
 #enable_testing()
