@@ -36,7 +36,7 @@
 #include "influxdbwindsvg-version.h"
 
 /////////////////////////////////////////////////////////////////////////////
-static const std::string ProgramVersionString("InfluxDBWindSVG Version " influxdbwindsvg_VERSION_MAJOR "." influxdbwindsvg_VERSION_MINOR "." influxdbwindsvg_VERSION_PATCH " Built on: " __DATE__ " at " __TIME__);
+static const std::string ProgramVersionString("InfluxDBWindSVG Version " influxdbwindsvg_VERSION " Built on: " __DATE__ " at " __TIME__);
 /////////////////////////////////////////////////////////////////////////////
 std::string timeToISO8601(const time_t& TheTime, const bool LocalTime = false)
 {
