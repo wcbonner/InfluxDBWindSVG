@@ -1,4 +1,4 @@
 #pragma once
 #define QUOTE(x) #x
 #define STR(x) QUOTE(x)
-#define influxdbwindsvg_VERSION STR(@CMAKE_PROJECT_VERSION@)
+#define InfluxDBWindSVG_VERSION STR(@CMAKE_PROJECT_VERSION@)
