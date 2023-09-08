@@ -33,8 +33,8 @@ popd
 ```
 git clone https://github.com/wcbonner/InfluxDBWindSVG.git
 cmake -S InfluxDBWindSVG -B InfluxDBWindSVG/build
-pushd InfluxDBWindSVG/build && make && popd
-InfluxDBWindSVG/build/influxdbwindsvg
+cmake --build InfluxDBWindSVG/build
+pushd InfluxDBWindSVG/build && cpack . && popd
 ```
 
 ### Below is a log of what I did
