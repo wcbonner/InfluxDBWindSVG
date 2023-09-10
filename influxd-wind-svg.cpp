@@ -516,7 +516,7 @@ std::vector<Influx_Wind> InfluxMRTGLog; // vector structure similar to MRTG Log 
 // Takes current datapoint and updates the mapped structure in memory simulating the contents of a MRTG log file.
 void UpdateMRTGData(std::vector<Influx_Wind>& FakeMRTGFile, Influx_Wind& TheValue)
 {
-	if (FakeMRTGFile.empty())
+	if (FakeMRTGFile.size() != 2 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT + YEAR_COUNT)
 	{
 		FakeMRTGFile.resize(2 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT + YEAR_COUNT);
 		FakeMRTGFile[0] = TheValue;	// current value
