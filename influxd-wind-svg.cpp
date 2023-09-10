@@ -597,7 +597,7 @@ void UpdateMRTGData(std::vector<Influx_Wind>& FakeMRTGFile, Influx_Wind& TheValu
 // Returns a curated vector of data points specific to the requested graph type from the internal memory structure
 void ReadMRTGData(const std::vector<Influx_Wind>& FakeMRTGFile, std::vector<Influx_Wind>& TheValues, const GraphType graph = GraphType::daily)
 {
-	if (FakeMRTGFile.size() > 0)
+	if (FakeMRTGFile.size() == 2 + DAY_COUNT + WEEK_COUNT + MONTH_COUNT + YEAR_COUNT)
 	{
 		auto DaySampleFirst = FakeMRTGFile.begin() + 2;
 		auto DaySampleLast = FakeMRTGFile.begin() + 1 + DAY_COUNT;
