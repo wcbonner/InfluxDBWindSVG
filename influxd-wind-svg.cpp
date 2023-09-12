@@ -491,15 +491,13 @@ void WriteSVG(std::vector<Influx_Wind>& TheValues, const std::filesystem::path& 
 						SVGFile << index + GraphLeft << "," << int(((TempMax - TheValues[index].GetApparentWindSpeedMin()) * TempVerticalFactor) + GraphTop) << " ";
 					SVGFile << "\" />" << std::endl;
 				}
-				else
-				{
-					// ApparentWindSpeed Values as a continuous line
-					SVGFile << "\t<!-- ApparentWindSpeed -->" << std::endl;
-					SVGFile << "\t<polyline style=\"fill:none;stroke:blue\" points=\"";
-					for (auto index = 1; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
-						SVGFile << index + GraphLeft << "," << int(((TempMax - TheValues[index].GetApparentWindSpeed()) * TempVerticalFactor) + GraphTop) << " ";
-					SVGFile << "\" />" << std::endl;
-				}
+				// always draw this line over the top of the MinMax
+				// ApparentWindSpeed Values as a continuous line
+				SVGFile << "\t<!-- ApparentWindSpeed -->" << std::endl;
+				SVGFile << "\t<polyline style=\"fill:none;stroke:blue\" points=\"";
+				for (auto index = 1; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
+					SVGFile << index + GraphLeft << "," << int(((TempMax - TheValues[index].GetApparentWindSpeed()) * TempVerticalFactor) + GraphTop) << " ";
+				SVGFile << "\" />" << std::endl;
 
 				SVGFile << "</svg>" << std::endl;
 				SVGFile.close();
