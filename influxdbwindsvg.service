@@ -9,7 +9,7 @@ StartLimitIntervalSec=33
 [Service]
 Type=simple
 Restart=always
-RestartSec=5
+RestartSec=1min 30s
 Environment="VERBOSITY=0"
 Environment="DBARGS=--host localhost --port 8086 --database sola"
 Environment="SVGARGS=--svg /var/www/html/mrtg --minmax 15"
