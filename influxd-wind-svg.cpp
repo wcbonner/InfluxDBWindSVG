@@ -855,6 +855,9 @@ int main(int argc, char** argv)
 		sigaddset(&set, SIGINT);
 		sigaddset(&set, SIGHUP);
 		siginfo_t sig(0);
+		//time_t TimeNow;
+		//time(&TimeNow);
+		//time_t TimeSVG = (TimeNow / DAY_SAMPLE) * DAY_SAMPLE; // hack to try to line up TimeSVG to be on a five minute period
 		timespec MyTimeout(5*60, 0);
 		if (ConsoleVerbosity > 0)
 			std::cout << "[" << getTimeISO8601(true) << "] Waiting for signal or timeout (" << MyTimeout.tv_sec << " seconds)" << std::endl;
