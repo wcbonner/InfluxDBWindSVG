@@ -237,30 +237,17 @@ Influx_Wind::Influx_Wind(const influxdb::Point& data)
 }
 Influx_Wind::Influx_Wind(const std::string& data)
 {
-	std::string TheLine(data);
-	// erase any nulls from the data. these are occasionally in the log file when the platform crashed during a write to the logfile.
-	for (auto pos = TheLine.find('\000'); pos != std::string::npos; pos = TheLine.find('\000'))
-		TheLine.erase(pos);
-	char buffer[256];
-	if (!TheLine.empty() && (TheLine.size() < sizeof(buffer)))
-	{
-		// minor garbage check looking for corrupt data with no tab characters
-		if (TheLine.find('\t') != std::string::npos)
-		{
-			TheLine.copy(buffer, TheLine.size());
-			buffer[TheLine.size()] = '\0';
-			std::string theDate(strtok(buffer, "\t"));
-			Time = ISO8601totime(theDate);
-			std::string theApparentWindSpeed(strtok(NULL, "\t"));
-			ApparentWindSpeed = std::atof(theApparentWindSpeed.c_str());
-			std::string theApparentWindSpeedMin(strtok(NULL, "\t"));
-			ApparentWindSpeedMin = std::atof(theApparentWindSpeedMin.c_str());
-			std::string theApparentWindSpeedMax(strtok(NULL, "\t"));
-			ApparentWindSpeedMax = std::atof(theApparentWindSpeedMax.c_str());
-			std::string theAverages(strtok(NULL, "\t"));
-			Averages = std::atoi(theAverages.c_str());
-		}
-	}
+	std::istringstream ssValue(data);
+	std::string theDay;
+	ssValue >> theDay;
+	std::string theHour;
+	ssValue >> theHour;
+	std::string theDate(theDay + " " + theHour);
+	Time = ISO8601totime(theDate);
+	ssValue >> ApparentWindSpeed;
+	ssValue >> ApparentWindSpeedMin;
+	ssValue >> ApparentWindSpeedMax;
+	ssValue >> Averages;
 }
 std::string Influx_Wind::WriteTXT(const char seperator) const
 {
