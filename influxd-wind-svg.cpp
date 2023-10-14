@@ -664,7 +664,7 @@ Influx_Pressure::Influx_Pressure(const influxdb::Point& data)
 	Time = std::chrono::system_clock::to_time_t(data.getTimestamp());
 	std::string value(data.getFields());
 	value.erase(0, value.find("=") + 1);
-	OutsidePressureMax = OutsidePressureMin = OutsidePressure = std::atof(value.c_str()) * 1.9438445; // data is recorded in m/s and I want it in knots
+	OutsidePressureMax = OutsidePressureMin = OutsidePressure = std::atof(value.c_str()) / 100;
 	Averages = 1;
 }
 Influx_Pressure::Influx_Pressure(const std::string& data)
