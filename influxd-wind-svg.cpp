@@ -753,7 +753,7 @@ void WriteSVG(std::vector<Influx_Pressure>& TheValues, const std::filesystem::pa
 	const int SVGHeight(135);
 	const int FontSize(12);
 	const int TickSize(2);
-	int GraphWidth = SVGWidth - (FontSize * 7);
+	int GraphWidth = SVGWidth - (FontSize * 6);
 	if (!TheValues.empty())
 	{
 		struct stat64 SVGStat(0);
