@@ -1249,24 +1249,24 @@ int main(int argc, char** argv)
 			OutputPath = SVGDirectory / OutputFilename.str();
 			ReadMRTGData(InfluxMRTGPressure, TheValues, GraphType::yearly);
 			WriteSVG(TheValues, OutputPath, SVGTitle, GraphType::yearly, true);
-			if (!InfluxDBCacheFileWind.empty())
+			if (!InfluxDBCacheFilePressure.empty())
 			{
 				struct stat64 Stat(0);
-				stat64(InfluxDBCacheFileWind.c_str(), &Stat);
+				stat64(InfluxDBCacheFilePressure.c_str(), &Stat);
 				if (difftime(InfluxMRTGPressure[0].Time, Stat.st_mtim.tv_sec) > 60 * 60) // If Cache File has data older than 60 minutes, write it
 				{
-					std::ofstream LogFile(InfluxDBCacheFileWind, std::ios_base::out | std::ios_base::trunc);
+					std::ofstream LogFile(InfluxDBCacheFilePressure, std::ios_base::out | std::ios_base::trunc);
 					if (LogFile.is_open())
 					{
 						if (ConsoleVerbosity > 0)
-							std::cout << "[" << getTimeISO8601(true) << "] Writing: " << InfluxDBCacheFileWind.string() << std::endl;
+							std::cout << "[" << getTimeISO8601(true) << "] Writing: " << InfluxDBCacheFilePressure.string() << std::endl;
 						else
-							std::cerr << "Writing: " << InfluxDBCacheFileWind.string() << std::endl;
+							std::cerr << "Writing: " << InfluxDBCacheFilePressure.string() << std::endl;
 						for (auto i : InfluxMRTGPressure)
 							LogFile << i.WriteTXT() << std::endl;
 						LogFile.close();
 						struct utimbuf SVGut({ InfluxMRTGPressure.begin()->Time, InfluxMRTGPressure.begin()->Time });
-						utime(InfluxDBCacheFileWind.c_str(), &SVGut);
+						utime(InfluxDBCacheFilePressure.c_str(), &SVGut);
 					}
 				}
 			}
