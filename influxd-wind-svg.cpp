@@ -328,12 +328,10 @@ void WriteSVG(std::vector<Influx_Wind>& TheValues, const std::filesystem::path& 
 	int GraphWidth = SVGWidth - (FontSize * 5);
 	if (!TheValues.empty())
 	{
-		struct stat64 SVGStat;
-		SVGStat.st_mtim.tv_sec = 0;
+		struct stat64 SVGStat(0);
 		if (-1 == stat64(SVGFileName.c_str(), &SVGStat))
 			if (ConsoleVerbosity > 0)
-				perror(SVGFileName.c_str());
-		//std::cout << "[" << getTimeISO8601() << "] stat returned error on : " << SVGFileName << std::endl;
+				std::cout << "[" << getTimeISO8601(true) << "] " << SVGFileName << ": " << std::strerror(errno) << std::endl;
 		if (TheValues.begin()->Time > SVGStat.st_mtim.tv_sec)	// only write the file if we have new data
 		{
 			std::ofstream SVGFile(SVGFileName);
@@ -758,12 +756,10 @@ void WriteSVG(std::vector<Influx_Pressure>& TheValues, const std::filesystem::pa
 	int GraphWidth = SVGWidth - (FontSize * 5);
 	if (!TheValues.empty())
 	{
-		struct stat64 SVGStat;
-		SVGStat.st_mtim.tv_sec = 0;
+		struct stat64 SVGStat(0);
 		if (-1 == stat64(SVGFileName.c_str(), &SVGStat))
 			if (ConsoleVerbosity > 0)
-				perror(SVGFileName.c_str());
-		//std::cout << "[" << getTimeISO8601() << "] stat returned error on : " << SVGFileName << std::endl;
+				std::cout << "[" << getTimeISO8601(true) << "] " << SVGFileName << ": " << std::strerror(errno) << std::endl;
 		if (TheValues.begin()->Time > SVGStat.st_mtim.tv_sec)	// only write the file if we have new data
 		{
 			std::ofstream SVGFile(SVGFileName);
