@@ -13,6 +13,8 @@ RestartSec=1min 30s
 ExecStartPre=/bin/mkdir --parents /var/cache/InfluxDBWindSVG
 ExecStart=/usr/local/bin/influxdbwindsvg \
 	--verbose 0 \
+	--wind \
+	--pressure \
 	--host localhost --port 8086 --database sola \
 	--svg /var/www/html/mrtg --minmax 15 \
 	--cache /var/cache/InfluxDBWindSVG
