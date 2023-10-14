@@ -1151,8 +1151,8 @@ int main(int argc, char** argv)
 			RecordsReturned = 0;
 			for (auto i : db->query(InfluxDBQuery.str()))
 			{
-				Influx_Pressure myWind(i);
-				UpdateMRTGData(InfluxMRTGPressure, myWind);
+				Influx_Pressure myPressure(i);
+				UpdateMRTGData(InfluxMRTGPressure, myPressure);
 				RecordsReturned++;
 			}
 			if (ConsoleVerbosity > 0)
@@ -1329,8 +1329,8 @@ int main(int argc, char** argv)
 				int count = 0;
 				for (auto i : db->query(InfluxDBQuery.str()))
 				{
-					Influx_Wind myWind(i);
-					UpdateMRTGData(InfluxMRTGWind, myWind);
+					Influx_Pressure myPressure(i);
+					UpdateMRTGData(InfluxMRTGPressure, myPressure);
 					count++;
 				}
 				if (ConsoleVerbosity > 0)
