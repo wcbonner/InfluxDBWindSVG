@@ -331,7 +331,7 @@ void WriteSVG(std::vector<Influx_Wind>& TheValues, const std::filesystem::path& 
 		struct stat64 SVGStat(0);
 		if (-1 == stat64(SVGFileName.c_str(), &SVGStat))
 			if (ConsoleVerbosity > 0)
-				std::cout << "[" << getTimeISO8601(true) << "] " << SVGFileName << ": " << std::strerror(errno) << std::endl;
+				std::cout << "[" << getTimeISO8601(true) << "] " << std::strerror(errno) << ": " << SVGFileName << std::endl;
 		if (TheValues.begin()->Time > SVGStat.st_mtim.tv_sec)	// only write the file if we have new data
 		{
 			std::ofstream SVGFile(SVGFileName);
@@ -753,13 +753,13 @@ void WriteSVG(std::vector<Influx_Pressure>& TheValues, const std::filesystem::pa
 	const int SVGHeight(135);
 	const int FontSize(12);
 	const int TickSize(2);
-	int GraphWidth = SVGWidth - (FontSize * 5);
+	int GraphWidth = SVGWidth - (FontSize * 7);
 	if (!TheValues.empty())
 	{
 		struct stat64 SVGStat(0);
 		if (-1 == stat64(SVGFileName.c_str(), &SVGStat))
 			if (ConsoleVerbosity > 0)
-				std::cout << "[" << getTimeISO8601(true) << "] " << SVGFileName << ": " << std::strerror(errno) << std::endl;
+				std::cout << "[" << getTimeISO8601(true) << "] " << std::strerror(errno) << ": " << SVGFileName << std::endl;
 		if (TheValues.begin()->Time > SVGStat.st_mtim.tv_sec)	// only write the file if we have new data
 		{
 			std::ofstream SVGFile(SVGFileName);
@@ -770,7 +770,7 @@ void WriteSVG(std::vector<Influx_Pressure>& TheValues, const std::filesystem::pa
 				else
 					std::cerr << "Writing: " << SVGFileName.string() << " With Title: " << Title << std::endl;
 				std::ostringstream tempOString;
-				tempOString << "Air Pressure (" << std::fixed << std::setprecision(1) << TheValues[0].GetOutsidePressure() << " hPa)";
+				tempOString << "Pressure (" << std::fixed << std::setprecision(1) << TheValues[0].GetOutsidePressure() << " hPa)";
 				std::string YLegendWindSpeed(tempOString.str());
 				int GraphTop = FontSize + TickSize;
 				int GraphBottom = SVGHeight - GraphTop;
