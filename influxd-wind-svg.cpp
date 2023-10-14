@@ -186,8 +186,7 @@ std::string InfluxDBHost("localhost");
 std::string InfluxDBDatabase("sola");
 int InfluxDBPort(8086);
 int InfluxDBQueryLimit(40000);
-std::filesystem::path InfluxMRTGCacheFile("/var/cache/InfluxDBWindSVG/influxdbwind.txt"); // Because it takes so long to load all the data from the database, I'm going to cache the MRTG version of the data here.
-time_t InfluxMRTGCacheTime(0);
+std::filesystem::path InfluxDBCacheDirectory;	// Because it takes so long to load all the data from the database, I'm going to cache the MRTG version of the data here.
 /////////////////////////////////////////////////////////////////////////////
 // The following details were taken from https://github.com/oetiker/mrtg
 const size_t DAY_COUNT(600);			/* 400 samples is 33.33 hours */
@@ -488,16 +487,14 @@ void WriteSVG(std::vector<Influx_Wind>& TheValues, const std::filesystem::path& 
 
 				SVGFile << "</svg>" << std::endl;
 				SVGFile.close();
-				struct utimbuf SVGut;
-				SVGut.actime = TheValues.begin()->Time;
-				SVGut.modtime = TheValues.begin()->Time;
+				struct utimbuf SVGut({ TheValues.begin()->Time, TheValues.begin()->Time });
 				utime(SVGFileName.c_str(), &SVGut);
 			}
 		}
 	}
 }
 /////////////////////////////////////////////////////////////////////////////
-std::vector<Influx_Wind> InfluxMRTGLog; // vector structure similar to MRTG Log File
+std::vector<Influx_Wind> InfluxMRTGWind; // vector structure similar to MRTG Log File
 // Takes current datapoint and updates the mapped structure in memory simulating the contents of a MRTG log file.
 void UpdateMRTGData(std::vector<Influx_Wind>& FakeMRTGFile, Influx_Wind& TheValue)
 {
@@ -656,7 +653,7 @@ static void usage(int argc, char** argv)
 	std::cout << "    -h | --host name     InfluxDBHost [" << InfluxDBHost << "]" << std::endl;
 	std::cout << "    -p | --port number   InfluxDBPort [" << InfluxDBPort << "]" << std::endl;
 	std::cout << "    -d | --database name InfluxDBDatabase [" << InfluxDBDatabase << "]" << std::endl;
-	std::cout << "    -c | --cache name    InfluxMRTGCacheFile [" << InfluxMRTGCacheFile << "]" << std::endl;
+	std::cout << "    -c | --cache name    InfluxDBCacheDirectory [" << InfluxDBCacheDirectory << "]" << std::endl;
 	std::cout << std::endl;
 }
 static const char short_options[] = "?v:s:x:h:p:d:c:";
@@ -686,39 +683,43 @@ int main(int argc, char** argv)
 		{
 		case 0: /* getopt_long() flag */
 			break;
-		case '?':
+		case '?':	// --help
 			usage(argc, argv);
 			exit(EXIT_SUCCESS);
-		case 'v':
+		case 'v':	// --verbose
 			try { ConsoleVerbosity = std::stoi(optarg); }
 			catch (const std::invalid_argument& ia) { std::cerr << "Invalid argument: " << ia.what() << std::endl; exit(EXIT_FAILURE); }
 			catch (const std::out_of_range& oor) { std::cerr << "Out of Range error: " << oor.what() << std::endl; exit(EXIT_FAILURE); }
 			break;
-		case 's':
+		case 's':	// --svg
 			TempPath = std::string(optarg);
 			while (TempPath.filename().empty() && (TempPath != TempPath.root_directory())) // This gets rid of the "/" on the end of the path
 				TempPath = TempPath.parent_path();
 			if (ValidateDirectory(TempPath))
 				SVGDirectory = TempPath;
 			break;
-		case 'x':
+		case 'x':	// --minmax
 			try { SVGMinMax = std::stoi(optarg); }
 			catch (const std::invalid_argument& ia) { std::cerr << "Invalid argument: " << ia.what() << std::endl; exit(EXIT_FAILURE); }
 			catch (const std::out_of_range& oor) { std::cerr << "Out of Range error: " << oor.what() << std::endl; exit(EXIT_FAILURE); }
 			break;
-		case 'h':
+		case 'h':	// --host
 			InfluxDBHost = std::string(optarg);
 			break;
-		case 'p':
+		case 'p':	// --port
 			try { InfluxDBPort = std::stoi(optarg); }
 			catch (const std::invalid_argument& ia) { std::cerr << "Invalid argument: " << ia.what() << std::endl; exit(EXIT_FAILURE); }
 			catch (const std::out_of_range& oor) { std::cerr << "Out of Range error: " << oor.what() << std::endl; exit(EXIT_FAILURE); }
 			break;
-		case 'd':
+		case 'd':	// --database
 			InfluxDBDatabase = std::string(optarg);
 			break;
-		case 'c':
-			InfluxMRTGCacheFile = std::string(optarg);
+		case 'c':	// --cache
+			TempPath = std::string(optarg);
+			while (TempPath.filename().empty() && (TempPath != TempPath.root_directory())) // This gets rid of the "/" on the end of the path
+				TempPath = TempPath.parent_path();
+			if (ValidateDirectory(TempPath))
+				InfluxDBCacheDirectory = TempPath;
 			break;
 		default:
 			usage(argc, argv);
@@ -736,27 +737,40 @@ int main(int argc, char** argv)
 			std::cout << "[                   ]     host: " << InfluxDBHost << std::endl;
 			std::cout << "[                   ]     port: " << InfluxDBPort << std::endl;
 			std::cout << "[                   ] database: " << InfluxDBDatabase << std::endl;
-			std::cout << "[                   ]    cache: " << InfluxMRTGCacheFile << std::endl;
+			std::cout << "[                   ]    cache: " << InfluxDBCacheDirectory << std::endl;
 		}
 	}
 	else
 		std::cerr << ProgramVersionString << " (starting)" << std::endl;
 	///////////////////////////////////////////////////////////////////////////////////////////////
+	if (InfluxDBHost.empty() || 
+		InfluxDBDatabase.empty() || 
+		(InfluxDBPort == 0) || 
+		SVGDirectory.empty())
+	{
+		// If these are not supplied or valid, there's no purpose to be running
+		usage(argc, argv);
+		exit(EXIT_FAILURE);
+	}
+	///////////////////////////////////////////////////////////////////////////////////////////////
 	tzset();
 	///////////////////////////////////////////////////////////////////////////////////////////////
-	std::ifstream TheFile(InfluxMRTGCacheFile);
-	if (TheFile.is_open())
+	std::filesystem::path InfluxDBCacheFileWind;
+	if (!InfluxDBCacheDirectory.empty())
 	{
-		if (ConsoleVerbosity > 0)
-			std::cout << "[" << getTimeISO8601(true) << "] Reading: " << InfluxMRTGCacheFile.string() << std::endl;
-		else
-			std::cerr << "Reading: " << InfluxMRTGCacheFile.string() << std::endl;
-		std::string TheLine;
-		while (std::getline(TheFile, TheLine))
-			InfluxMRTGLog.push_back(Influx_Wind(TheLine));
-		TheFile.close();
-		if (!InfluxMRTGLog.empty())
-			InfluxMRTGCacheTime = InfluxMRTGLog[0].Time;
+		InfluxDBCacheFileWind = std::filesystem::path(InfluxDBCacheDirectory / "influxdbwind.txt");
+		std::ifstream TheFile(InfluxDBCacheFileWind);
+		if (TheFile.is_open())
+		{
+			if (ConsoleVerbosity > 0)
+				std::cout << "[" << getTimeISO8601(true) << "] Reading: " << InfluxDBCacheFileWind.string() << std::endl;
+			else
+				std::cerr << "Reading: " << InfluxDBCacheFileWind.string() << std::endl;
+			std::string TheLine;
+			while (std::getline(TheFile, TheLine))
+				InfluxMRTGWind.push_back(Influx_Wind(TheLine));
+			TheFile.close();
+		}
 	}
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	std::stringstream InfluxDB;
@@ -765,10 +779,10 @@ int main(int argc, char** argv)
 		std::cout << "[" << getTimeISO8601(true) << "] " << InfluxDB.str() << std::endl;
 	auto db = influxdb::InfluxDBFactory::Get(InfluxDB.str());
 	std::stringstream InfluxDBQuery;
-	if (InfluxMRTGLog.empty())
+	if (InfluxMRTGWind.empty())
 		InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > now()-450d LIMIT " << InfluxDBQueryLimit;
 	else
-		InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '" << timeToExcelDate(InfluxMRTGLog[0].Time) << "' LIMIT " << InfluxDBQueryLimit;
+		InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '" << timeToExcelDate(InfluxMRTGWind[0].Time) << "' LIMIT " << InfluxDBQueryLimit;
 	int RecordsReturned(0);
 	do 
 	{
@@ -778,13 +792,13 @@ int main(int argc, char** argv)
 		for (auto i : db->query(InfluxDBQuery.str()))
 		{
 			Influx_Wind myWind(i);
-			UpdateMRTGData(InfluxMRTGLog, myWind);
+			UpdateMRTGData(InfluxMRTGWind, myWind);
 			RecordsReturned++;
 		}
 		if (ConsoleVerbosity > 0)
 			std::cout << " (" << RecordsReturned << " records returned)" << std::endl;
 		InfluxDBQuery = std::stringstream(); // reset query string to empty
-		InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '" << timeToExcelDate(InfluxMRTGLog[0].Time) << "' LIMIT " << InfluxDBQueryLimit;
+		InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '" << timeToExcelDate(InfluxMRTGWind[0].Time) << "' LIMIT " << InfluxDBQueryLimit;
 	} while (RecordsReturned > 50);
 
 	auto previousHandlerSIGINT = signal(SIGINT, SignalHandlerSIGINT);	// Install CTR-C signal handler
@@ -802,39 +816,45 @@ int main(int argc, char** argv)
 		OutputFilename << InfluxDBDatabase;
 		OutputFilename << "_wind-day.svg";
 		OutputPath = SVGDirectory / OutputFilename.str();
-		ReadMRTGData(InfluxMRTGLog, TheValues, GraphType::daily);
+		ReadMRTGData(InfluxMRTGWind, TheValues, GraphType::daily);
 		WriteSVG(TheValues, OutputPath, SVGTitle, GraphType::daily, true);
 		OutputFilename.str("");
 		OutputFilename << InfluxDBDatabase;
 		OutputFilename << "_wind-week.svg";
 		OutputPath = SVGDirectory / OutputFilename.str();
-		ReadMRTGData(InfluxMRTGLog, TheValues, GraphType::weekly);
+		ReadMRTGData(InfluxMRTGWind, TheValues, GraphType::weekly);
 		WriteSVG(TheValues, OutputPath, SVGTitle, GraphType::weekly, true);
 		OutputFilename.str("");
 		OutputFilename << InfluxDBDatabase;
 		OutputFilename << "_wind-month.svg";
 		OutputPath = SVGDirectory / OutputFilename.str();
-		ReadMRTGData(InfluxMRTGLog, TheValues, GraphType::monthly);
+		ReadMRTGData(InfluxMRTGWind, TheValues, GraphType::monthly);
 		WriteSVG(TheValues, OutputPath, SVGTitle, GraphType::monthly, true);
 		OutputFilename.str("");
 		OutputFilename << InfluxDBDatabase;
 		OutputFilename << "_wind-year.svg";
 		OutputPath = SVGDirectory / OutputFilename.str();
-		ReadMRTGData(InfluxMRTGLog, TheValues, GraphType::yearly);
+		ReadMRTGData(InfluxMRTGWind, TheValues, GraphType::yearly);
 		WriteSVG(TheValues, OutputPath, SVGTitle, GraphType::yearly, true);
-		if (difftime(InfluxMRTGLog[0].Time, InfluxMRTGCacheTime) > 60 * 60) // If Cache File has data older than 60 minutes, write it
+		if (!InfluxDBCacheFileWind.empty())
 		{
-			std::ofstream LogFile(InfluxMRTGCacheFile, std::ios_base::out | std::ios_base::trunc);
-			if (LogFile.is_open())
+			struct stat64 Stat(0);
+			stat64(InfluxDBCacheFileWind.c_str(), &Stat);
+			if (difftime(InfluxMRTGWind[0].Time, Stat.st_mtim.tv_sec) > 60 * 60) // If Cache File has data older than 60 minutes, write it
 			{
-				if (ConsoleVerbosity > 0)
-					std::cout << "[" << getTimeISO8601(true) << "] Writing: " << InfluxMRTGCacheFile.string() << std::endl;
-				else
-					std::cerr << "Writing: " << InfluxMRTGCacheFile.string() << std::endl;
-				for (auto i : InfluxMRTGLog)
-					LogFile << i.WriteTXT() << std::endl;
-				LogFile.close();
-				InfluxMRTGCacheTime = InfluxMRTGLog[0].Time;
+				std::ofstream LogFile(InfluxDBCacheFileWind, std::ios_base::out | std::ios_base::trunc);
+				if (LogFile.is_open())
+				{
+					if (ConsoleVerbosity > 0)
+						std::cout << "[" << getTimeISO8601(true) << "] Writing: " << InfluxDBCacheFileWind.string() << std::endl;
+					else
+						std::cerr << "Writing: " << InfluxDBCacheFileWind.string() << std::endl;
+					for (auto i : InfluxMRTGWind)
+						LogFile << i.WriteTXT() << std::endl;
+					LogFile.close();
+					struct utimbuf SVGut({ InfluxMRTGWind.begin()->Time, InfluxMRTGWind.begin()->Time });
+					utime(InfluxDBCacheFileWind.c_str(), &SVGut);
+				}
 			}
 		}
 		sigset_t set;
@@ -867,14 +887,14 @@ int main(int argc, char** argv)
 			break;
 		default:
 			InfluxDBQuery = std::stringstream(); // reset query string to empty
-			InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '" << timeToExcelDate(InfluxMRTGLog[0].Time) << "'";
+			InfluxDBQuery << "SELECT value FROM \"environment.wind.speedApparent\" WHERE time > '" << timeToExcelDate(InfluxMRTGWind[0].Time) << "'";
 			if (ConsoleVerbosity > 0)
 				std::cout << "[" << getTimeISO8601(true) << "] " << InfluxDBQuery.str();
 			int count = 0;
 			for (auto i : db->query(InfluxDBQuery.str()))
 			{
 				Influx_Wind myWind(i);
-				UpdateMRTGData(InfluxMRTGLog, myWind);
+				UpdateMRTGData(InfluxMRTGWind, myWind);
 				count++;
 			}
 			if (ConsoleVerbosity > 0)

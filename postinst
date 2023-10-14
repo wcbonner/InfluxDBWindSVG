@@ -1,8 +1,7 @@
 #!/bin/sh
 # POSTINST script for InfluxDBWindSVG
 
-echo "\033[36m HI I'M A POSTINST SCRIPT `date +"%s"` \033[39m"
-mkdir --parents /var/cache/InfluxDBWindSVG/
+echo "\033[36m HI I'M A POSTINST SCRIPT `date` \033[39m"
 systemctl daemon-reload
 systemctl enable influxdbwindsvg.service
 systemctl start influxdbwindsvg.service

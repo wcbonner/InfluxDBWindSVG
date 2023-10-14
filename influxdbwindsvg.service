@@ -10,11 +10,12 @@ StartLimitIntervalSec=33
 Type=simple
 Restart=always
 RestartSec=1min 30s
-Environment="VERBOSITY=0"
-Environment="DBARGS=--host localhost --port 8086 --database sola"
-Environment="SVGARGS=--svg /var/www/html/mrtg --minmax 15"
-Environment="EXTRAARGS=--cache /var/cache/InfluxDBWindSVG/influxdbwind.txt"
-ExecStart=/usr/local/bin/influxdbwindsvg -v ${VERBOSITY} $DBARGS $SVGARGS $EXTRAARGS
+ExecStartPre=/bin/mkdir --parents /var/cache/InfluxDBWindSVG
+ExecStart=/usr/local/bin/influxdbwindsvg \
+	--verbose 0 \
+	--host localhost --port 8086 --database sola \
+	--svg /var/www/html/mrtg --minmax 15 \
+	--cache /var/cache/InfluxDBWindSVG
 KillSignal=SIGINT
 
 [Install]
