@@ -1,9 +1,10 @@
 # InfluxDBWindSVG
-Retrieves Apparent Wind Data from Influx database and writes it to MRTG style SVG graphs.
+Retrieves Apparent Wind and Atmospheric Pressure data from Influx database and writes it to MRTG style SVG graphs.
 
 ![Image](./sola_wind-day.svg)
+![Image](./sola_pressure-day.svg)
 
-The apparent wind data is inserted into my database from an existing SignalK https://github.com/SignalK instance recieving data from the instruments on my boat.
+The apparent wind data is inserted into the database from an existing SignalK https://github.com/SignalK instance recieving data from the instruments on my boat.
 
 ## Details
 
