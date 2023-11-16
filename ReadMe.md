@@ -1,9 +1,27 @@
 # InfluxDBWindSVG
-Retrieves Apparent Wind Data from Influx database and writes it to MRTG style SVG graphs.
+Retrieves Apparent Wind and Atmospheric Pressure data from Influx database and writes it to MRTG style SVG graphs.
 
 ![Image](./sola_wind-day.svg)
+![Image](./sola_pressure-day.svg)
 
-The apparent wind data is inserted into my database from an existing SignalK https://github.com/SignalK instance recieving data from the instruments on my boat.
+The apparent wind data is inserted into the database from an existing SignalK https://github.com/SignalK instance recieving data from the instruments on my boat.
+
+## Usage
+```
+Usage: /usr/local/bin/influxdbwindsvg [options]
+  InfluxDBWindSVG Version 2.20231017.3 Built on: Oct 17 2023 at 06:07:10
+  Options:
+    -? | --help          Print this message
+    -v | --verbose level stdout verbosity level [1]
+    -W | --wind          monitor environment.wind.speedApparent
+    -P | --pressure      monitor environment.outside.pressure
+    -s | --svg name      SVG output directory [""]
+    -x | --minmax graph  Draw the minimum and maximum temperature and humidity status on SVG graphs. 1:daily, 2:weekly, 4:monthly, 8:yearly
+    -h | --host name     InfluxDBHost []
+    -p | --port number   InfluxDBPort [0]
+    -d | --database name InfluxDBDatabase []
+    -c | --cache name    InfluxDBCacheDirectory [""]
+```
 
 ## Details
 
