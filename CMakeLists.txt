@@ -10,7 +10,7 @@ if (POLICY CMP0141)
 endif()
 
 project ("influxdbwindsvg"
-    VERSION 2.20231017.3
+    VERSION 2.20231204.0
     DESCRIPTION "Retrieves Environment Data from Influx Database and creates SVG files"
     HOMEPAGE_URL https://github.com/wcbonner/InfluxDBWindSVG
 )
@@ -36,12 +36,12 @@ target_link_libraries(influxdbwindsvg PRIVATE InfluxData::InfluxDB)
 
 install(TARGETS influxdbwindsvg
     DESTINATION bin
-    RUNTIME DESTINATION "/usr/local/bin/"
-    LIBRARY DESTINATION "/usr/local/lib/"
+    RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+    LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
 )
 
 install(FILES "influxdbwindsvg.service"
-    DESTINATION "/usr/local/lib/systemd/system"
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system
     COMPONENT "influxdbwindsvg"
 )
 

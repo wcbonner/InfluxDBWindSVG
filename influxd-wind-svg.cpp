@@ -802,6 +802,7 @@ void WriteSVG(std::vector<Influx_Pressure>& TheValues, const std::filesystem::pa
 				SVGFile << "\t\ttext { font-family: sans-serif; font-size: " << FontSize << "px; fill: black; }" << std::endl;
 				SVGFile << "\t\tline { stroke: black; }" << std::endl;
 				SVGFile << "\t\tpolygon { fill-opacity: 0.5; }" << std::endl;
+				SVGFile << "\t\t.barometer-label { font-family: Georgia, serif; font-style: italic; font-size: 24px; opacity: 0.5; clip-path: polygon( " << GraphLeft << "px " << GraphTop << "px, " << GraphRight << "px " << GraphTop << "px, " << GraphRight << "px " << GraphBottom << "px, " << GraphLeft << "px " << GraphBottom << "px) view-box; }" << std::endl;
 #ifdef _DARK_STYLE_
 				SVGFile << "\t@media only screen and (prefers-color-scheme: dark) {" << std::endl;
 				SVGFile << "\t\ttext { fill: grey; }" << std::endl;
@@ -912,6 +913,11 @@ void WriteSVG(std::vector<Influx_Pressure>& TheValues, const std::filesystem::pa
 				for (auto index = 1; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
 					SVGFile << index + GraphLeft << "," << int(((TempMax - TheValues[index].GetOutsidePressure()) * TempVerticalFactor) + GraphTop) << " ";
 				SVGFile << "\" />" << std::endl;
+
+				//TODO: The Next three line position needs to be calculated by an algorythm
+				SVGFile << "\t<text class=\"barometer-label\" x=\"200\" y=\"130\">Rain</text>" << std::endl;
+				SVGFile << "\t<text class=\"barometer-label\" x=\"455\" y=\"60\">Change</text>" << std::endl;
+				SVGFile << "\t<text class=\"barometer-label\" x=\"200\" y=\"20\">Fair</text>" << std::endl;
 
 				SVGFile << "</svg>" << std::endl;
 				SVGFile.close();
