@@ -10,7 +10,7 @@ if (POLICY CMP0141)
 endif()
 
 project ("influxdbwindsvg"
-    VERSION 2.20231205.2
+    VERSION 2.20231205.3
     DESCRIPTION "Retrieves Environment Data from Influx Database and creates SVG files"
     HOMEPAGE_URL https://github.com/wcbonner/InfluxDBWindSVG
 )
