@@ -803,7 +803,7 @@ void WriteSVG(std::vector<Influx_Pressure>& TheValues, const std::filesystem::pa
 				SVGFile << "\t\ttext { font-family: sans-serif; font-size: " << FontSize << "px; fill: black; }" << std::endl;
 				SVGFile << "\t\tline { stroke: black; }" << std::endl;
 				SVGFile << "\t\tpolygon { fill-opacity: 0.5; }" << std::endl;
-				SVGFile << "\t\t.barometer-label { font-family: Georgia, serif; font-style: italic; font-size: " << int(TempVerticalFactor * 10) << "px; opacity: 0.5; clip-path: polygon( " << GraphLeft << "px " << GraphTop << "px, " << GraphRight << "px " << GraphTop << "px, " << GraphRight << "px " << GraphBottom << "px, " << GraphLeft << "px " << GraphBottom << "px) view-box; text-anchor: middle; }" << std::endl;
+				SVGFile << "\t\t.barometer-label { font-family: Georgia, serif; font-style: italic; font-size: " << int(TempVerticalFactor * 10) << "px; opacity: 0.5; clip-path: polygon( " << GraphLeft << "px " << GraphTop << "px, " << GraphRight << "px " << GraphTop << "px, " << GraphRight << "px " << GraphBottom << "px, " << GraphLeft << "px " << GraphBottom << "px) view-box; text-anchor: middle; dominant-baseline: middle; }" << std::endl;
 #ifdef _DARK_STYLE_
 				SVGFile << "\t@media only screen and (prefers-color-scheme: dark) {" << std::endl;
 				SVGFile << "\t\ttext { fill: grey; }" << std::endl;
