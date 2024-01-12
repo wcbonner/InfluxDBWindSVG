@@ -343,7 +343,10 @@ void WriteSVG(std::vector<Influx_Wind>& TheValues, const std::filesystem::path& 
 					std::cerr << "Writing: " << SVGFileName.string() << " With Title: " << Title << std::endl;
 				std::ostringstream tempOString;
 				tempOString << "Wind Speed (" << std::fixed << std::setprecision(1) << TheValues[0].GetApparentWindSpeed() << " kn)";
-				std::string YLegendWindSpeed(tempOString.str());
+				const std::string YLegendWindSpeed(tempOString.str());
+				tempOString.str("");
+				tempOString << "Wind Gust (" << std::fixed << std::setprecision(1) << TheValues[0].GetApparentWindSpeedMax() << " kn)";
+				const std::string YLegendWindGust(tempOString.str());
 				int GraphTop = FontSize + TickSize;
 				int GraphBottom = SVGHeight - GraphTop;
 				int GraphRight = SVGWidth - GraphTop;
@@ -389,6 +392,8 @@ void WriteSVG(std::vector<Influx_Wind>& TheValues, const std::filesystem::path& 
 				SVGFile << "\t<text x=\"" << GraphLeft << "\" y=\"" << GraphTop - 2 << "\">" << Title << "</text>" << std::endl;
 				SVGFile << "\t<text style=\"text-anchor:end\" x=\"" << GraphRight << "\" y=\"" << GraphTop - 2 << "\">" << timeToExcelLocal(TheValues[0].Time) << "</text>" << std::endl;
 				SVGFile << "\t<text style=\"fill:blue;text-anchor:middle\" x=\"" << FontSize * LegendIndex << "\" y=\"50%\" transform=\"rotate(270 " << FontSize * LegendIndex << "," << (GraphTop + GraphBottom) / 2 << ")\">" << YLegendWindSpeed << "</text>" << std::endl;
+				LegendIndex++;
+				SVGFile << "\t<text style=\"fill:blue;text-anchor:middle\" x=\"" << FontSize * LegendIndex << "\" y=\"50%\" transform=\"rotate(270 " << FontSize * LegendIndex << "," << (GraphTop + GraphBottom) / 2 << ")\">" << YLegendWindGust << "</text>" << std::endl;
 
 				// Top Line
 				SVGFile << "\t<line x1=\"" << GraphLeft - TickSize << "\" y1=\"" << GraphTop << "\" x2=\"" << GraphRight + TickSize << "\" y2=\"" << GraphTop << "\"/>" << std::endl;
@@ -772,7 +777,7 @@ void WriteSVG(std::vector<Influx_Pressure>& TheValues, const std::filesystem::pa
 					std::cerr << "Writing: " << SVGFileName.string() << " With Title: " << Title << std::endl;
 				std::ostringstream tempOString;
 				tempOString << "Pressure (" << std::fixed << std::setprecision(1) << TheValues[0].GetOutsidePressure() << " hPa)";
-				std::string YLegendWindSpeed(tempOString.str());
+				const std::string YLegendWindSpeed(tempOString.str());
 				int GraphTop = FontSize + TickSize;
 				int GraphBottom = SVGHeight - GraphTop;
 				int GraphRight = SVGWidth - GraphTop;
