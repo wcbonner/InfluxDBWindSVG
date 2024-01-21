@@ -480,7 +480,7 @@ void WriteSVG(std::vector<Influx_Wind>& TheValues, const std::filesystem::path& 
 					for (auto index = 1; index < (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()); index++)
 						SVGFile << index + GraphLeft << "," << int(((TempMax - TheValues[index].GetApparentWindSpeedMax()) * TempVerticalFactor) + GraphTop) << " ";
 					for (auto index = (GraphWidth < TheValues.size() ? GraphWidth : TheValues.size()) - 1; index > 0; index--)
-						SVGFile << index + GraphLeft << "," << int(((TempMax - TheValues[index].GetApparentWindSpeedMin()) * TempVerticalFactor) + GraphTop) << " ";
+						SVGFile << index + GraphLeft << "," << int(((TempMax - TheValues[index].GetApparentWindSpeed()) * TempVerticalFactor) + GraphTop) << " ";
 					SVGFile << "\" />" << std::endl;
 				}
 				// always draw this line over the top of the MinMax
