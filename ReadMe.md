@@ -3,13 +3,14 @@ Retrieves Apparent Wind and Atmospheric Pressure data from Influx database and w
 
 ![Image](./sola_wind-day.svg)
 ![Image](./sola_pressure-day.svg)
+![Image](./sola_windpressure-week.svg)
 
 The apparent wind data is inserted into the database from an existing SignalK https://github.com/SignalK instance recieving data from the instruments on my boat.
 
 ## Usage
 ```
 Usage: /usr/local/bin/influxdbwindsvg [options]
-  InfluxDBWindSVG Version 2.20231017.3 Built on: Oct 17 2023 at 06:07:10
+  InfluxDBWindSVG Version 3.20240121.1 Built on: Jan 21 2024 at 14:56:22
   Options:
     -? | --help          Print this message
     -v | --verbose level stdout verbosity level [1]
@@ -22,6 +23,8 @@ Usage: /usr/local/bin/influxdbwindsvg [options]
     -d | --database name InfluxDBDatabase []
     -c | --cache name    InfluxDBCacheDirectory [""]
 ```
+
+If both wind and pressure are selected, a combined graph is produced as well as the individual graphs. It is most interesting at the weekly scale.
 
 ## Details
 
