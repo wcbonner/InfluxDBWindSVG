@@ -936,6 +936,189 @@ void WriteSVG(std::vector<Influx_Pressure>& TheValues, const std::filesystem::pa
 	}
 }
 /////////////////////////////////////////////////////////////////////////////
+void WriteSVG(std::vector<Influx_Wind>& TheWindValues, std::vector<Influx_Pressure>& ThePressureValues, const std::filesystem::path& SVGFileName, const std::string& Title = "", const GraphType graph = GraphType::daily, const bool MinMax = false)
+{
+	// this overloaded function should allow both wind and pressue on same graph, with wind as left (primary) and pressure as right (secondary) scales.
+	// By declaring these items here, I'm then basing all my other dimensions on these
+	const int SVGWidth(500);
+	const int SVGHeight(135);
+	const int FontSize(12);
+	const int TickSize(2);
+	int GraphWidth = SVGWidth - (FontSize * 6);
+	if (!TheWindValues.empty())
+	{
+		struct stat64 SVGStat(0);
+		if (-1 == stat64(SVGFileName.c_str(), &SVGStat))
+			if (ConsoleVerbosity > 0)
+				std::cout << "[" << getTimeISO8601(true) << "] " << std::strerror(errno) << ": " << SVGFileName << std::endl;
+		if (TheWindValues.begin()->Time > SVGStat.st_mtim.tv_sec)	// only write the file if we have new data
+		{
+			std::ofstream SVGFile(SVGFileName);
+			if (SVGFile.is_open())
+			{
+				if (ConsoleVerbosity > 0)
+					std::cout << "[" << getTimeISO8601(true) << "] Writing: " << SVGFileName.string() << " With Title: " << Title << std::endl;
+				else
+					std::cerr << "Writing: " << SVGFileName.string() << " With Title: " << Title << std::endl;
+				std::ostringstream tempOString;
+				tempOString << "Wind Speed (" << std::fixed << std::setprecision(1) << TheWindValues[0].GetApparentWindSpeed() << " kn)";
+				const std::string YLegendWindSpeed(tempOString.str());
+				tempOString.str("");
+				tempOString << "Wind Gust (" << std::fixed << std::setprecision(1) << TheWindValues[0].GetApparentWindSpeedMax() << " kn)";
+				const std::string YLegendWindGust(tempOString.str());
+				int GraphTop = FontSize + TickSize;
+				int GraphBottom = SVGHeight - GraphTop;
+				int GraphRight = SVGWidth - GraphTop;
+				int GraphLeft = GraphRight - GraphWidth;
+				int GraphVerticalDivision = (GraphBottom - GraphTop) / 4;
+				double WindMin = DBL_MAX;
+				double WindMax = -DBL_MAX;
+				if (MinMax)
+					for (auto index = 0; index < (GraphWidth < TheWindValues.size() ? GraphWidth : TheWindValues.size()); index++)
+					{
+						WindMin = std::min(WindMin, TheWindValues[index].GetApparentWindSpeedMin());
+						WindMax = std::max(WindMax, TheWindValues[index].GetApparentWindSpeedMax());
+					}
+				else
+					for (auto index = 0; index < (GraphWidth < TheWindValues.size() ? GraphWidth : TheWindValues.size()); index++)
+					{
+						WindMin = std::min(WindMin, TheWindValues[index].GetApparentWindSpeed());
+						WindMax = std::max(WindMax, TheWindValues[index].GetApparentWindSpeed());
+					}
+
+				double WindVerticalDivision = (WindMax - WindMin) / 4;
+				double WindVerticalFactor = (GraphBottom - GraphTop) / (WindMax - WindMin);
+
+				SVGFile << "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?>" << std::endl;
+				SVGFile << "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"" << SVGWidth << "\" height=\"" << SVGHeight << "\">" << std::endl;
+				SVGFile << "\t<!-- Created by: " << ProgramVersionString << " -->" << std::endl;
+				SVGFile << "\t<clipPath id=\"GraphRegion\"><polygon points=\"" << GraphLeft << "," << GraphTop << " " << GraphRight << "," << GraphTop << " " << GraphRight << "," << GraphBottom << " " << GraphLeft << "," << GraphBottom << "\" /></clipPath>" << std::endl;
+				SVGFile << "\t<style>" << std::endl;
+				SVGFile << "\t\ttext { font-family: sans-serif; font-size: " << FontSize << "px; fill: black; }" << std::endl;
+				SVGFile << "\t\tline { stroke: black; }" << std::endl;
+				SVGFile << "\t\tpolygon { fill-opacity: 0.5; }" << std::endl;
+#ifdef _DARK_STYLE_
+				SVGFile << "\t@media only screen and (prefers-color-scheme: dark) {" << std::endl;
+				SVGFile << "\t\ttext { fill: grey; }" << std::endl;
+				SVGFile << "\t\tline { stroke: grey; }" << std::endl;
+				SVGFile << "\t}" << std::endl;
+#endif // _DARK_STYLE_
+				SVGFile << "\t</style>" << std::endl;
+				SVGFile << "\t<rect style=\"fill-opacity:0;stroke:grey;stroke-width:2\" width=\"" << SVGWidth << "\" height=\"" << SVGHeight << "\" />" << std::endl;
+
+				// Legend Text
+				int LegendIndex = 1;
+				SVGFile << "\t<text x=\"" << GraphLeft << "\" y=\"" << GraphTop - 2 << "\">" << Title << "</text>" << std::endl;
+				SVGFile << "\t<text style=\"text-anchor:end\" x=\"" << GraphRight << "\" y=\"" << GraphTop - 2 << "\">" << timeToExcelLocal(TheWindValues[0].Time) << "</text>" << std::endl;
+				SVGFile << "\t<text style=\"fill:blue;text-anchor:middle\" x=\"" << FontSize * LegendIndex << "\" y=\"50%\" transform=\"rotate(270 " << FontSize * LegendIndex << "," << (GraphTop + GraphBottom) / 2 << ")\">" << YLegendWindSpeed << "</text>" << std::endl;
+				LegendIndex++;
+				SVGFile << "\t<text style=\"fill:blue;text-anchor:middle\" x=\"" << FontSize * LegendIndex << "\" y=\"50%\" transform=\"rotate(270 " << FontSize * LegendIndex << "," << (GraphTop + GraphBottom) / 2 << ")\">" << YLegendWindGust << "</text>" << std::endl;
+
+				// Top Line
+				SVGFile << "\t<line x1=\"" << GraphLeft - TickSize << "\" y1=\"" << GraphTop << "\" x2=\"" << GraphRight + TickSize << "\" y2=\"" << GraphTop << "\"/>" << std::endl;
+				SVGFile << "\t<text style=\"fill:blue;text-anchor:end;dominant-baseline:middle\" x=\"" << GraphLeft - TickSize << "\" y=\"" << GraphTop << "\">" << std::fixed << std::setprecision(1) << WindMax << "</text>" << std::endl;
+
+				// Bottom Line
+				SVGFile << "\t<line x1=\"" << GraphLeft - TickSize << "\" y1=\"" << GraphBottom << "\" x2=\"" << GraphRight + TickSize << "\" y2=\"" << GraphBottom << "\"/>" << std::endl;
+				SVGFile << "\t<text style=\"fill:blue;text-anchor:end;dominant-baseline:middle\" x=\"" << GraphLeft - TickSize << "\" y=\"" << GraphBottom << "\">" << std::fixed << std::setprecision(1) << WindMin << "</text>" << std::endl;
+
+				// Left Line
+				SVGFile << "\t<line x1=\"" << GraphLeft << "\" y1=\"" << GraphTop << "\" x2=\"" << GraphLeft << "\" y2=\"" << GraphBottom << "\"/>" << std::endl;
+
+				// Right Line
+				SVGFile << "\t<line x1=\"" << GraphRight << "\" y1=\"" << GraphTop << "\" x2=\"" << GraphRight << "\" y2=\"" << GraphBottom << "\"/>" << std::endl;
+
+				// Vertical Division Dashed Lines
+				for (auto index = 1; index < 4; index++)
+				{
+					SVGFile << "\t<line style=\"stroke-dasharray:1\" x1=\"" << GraphLeft - TickSize << "\" y1=\"" << GraphTop + (GraphVerticalDivision * index) << "\" x2=\"" << GraphRight + TickSize << "\" y2=\"" << GraphTop + (GraphVerticalDivision * index) << "\" />" << std::endl;
+					SVGFile << "\t<text style=\"fill:blue;text-anchor:end;dominant-baseline:middle\" x=\"" << GraphLeft - TickSize << "\" y=\"" << GraphTop + (GraphVerticalDivision * index) << "\">" << std::fixed << std::setprecision(1) << WindMax - (WindVerticalDivision * index) << "</text>" << std::endl;
+				}
+
+				// Horizontal Division Dashed Lines
+				for (auto index = 0; index < (GraphWidth < TheWindValues.size() ? GraphWidth : TheWindValues.size()); index++)
+				{
+					struct tm UTC;
+					if (0 != localtime_r(&TheWindValues[index].Time, &UTC))
+					{
+						if (graph == GraphType::daily)
+						{
+							if (UTC.tm_min == 0)
+							{
+								if (UTC.tm_hour == 0)
+									SVGFile << "\t<line style=\"stroke:red\" x1=\"" << GraphLeft + index << "\" y1=\"" << GraphTop << "\" x2=\"" << GraphLeft + index << "\" y2=\"" << GraphBottom + TickSize << "\" />" << std::endl;
+								else
+									SVGFile << "\t<line style=\"stroke-dasharray:1\" x1=\"" << GraphLeft + index << "\" y1=\"" << GraphTop << "\" x2=\"" << GraphLeft + index << "\" y2=\"" << GraphBottom + TickSize << "\" />" << std::endl;
+								if (UTC.tm_hour % 2 == 0)
+									SVGFile << "\t<text style=\"text-anchor:middle\" x=\"" << GraphLeft + index << "\" y=\"" << SVGHeight - 2 << "\">" << UTC.tm_hour << "</text>" << std::endl;
+							}
+						}
+						else if (graph == GraphType::weekly)
+						{
+							const std::string Weekday[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+							if ((UTC.tm_hour == 0) && (UTC.tm_min == 0))
+							{
+								if (UTC.tm_wday == 0)
+									SVGFile << "\t<line style=\"stroke:red\" x1=\"" << GraphLeft + index << "\" y1=\"" << GraphTop << "\" x2=\"" << GraphLeft + index << "\" y2=\"" << GraphBottom + TickSize << "\" />" << std::endl;
+								else
+									SVGFile << "\t<line style=\"stroke-dasharray:1\" x1=\"" << GraphLeft + index << "\" y1=\"" << GraphTop << "\" x2=\"" << GraphLeft + index << "\" y2=\"" << GraphBottom + TickSize << "\" />" << std::endl;
+							}
+							else if ((UTC.tm_hour == 12) && (UTC.tm_min == 0))
+								SVGFile << "\t<text style=\"text-anchor:middle\" x=\"" << GraphLeft + index << "\" y=\"" << SVGHeight - 2 << "\">" << Weekday[UTC.tm_wday] << "</text>" << std::endl;
+						}
+						else if (graph == GraphType::monthly)
+						{
+							if ((UTC.tm_mday == 1) && (UTC.tm_hour == 0) && (UTC.tm_min == 0))
+								SVGFile << "\t<line style=\"stroke:red\" x1=\"" << GraphLeft + index << "\" y1=\"" << GraphTop << "\" x2=\"" << GraphLeft + index << "\" y2=\"" << GraphBottom + TickSize << "\" />" << std::endl;
+							if ((UTC.tm_wday == 0) && (UTC.tm_hour == 0) && (UTC.tm_min == 0))
+								SVGFile << "\t<line style=\"stroke-dasharray:1\" x1=\"" << GraphLeft + index << "\" y1=\"" << GraphTop << "\" x2=\"" << GraphLeft + index << "\" y2=\"" << GraphBottom + TickSize << "\" />" << std::endl;
+							else if ((UTC.tm_wday == 3) && (UTC.tm_hour == 12) && (UTC.tm_min == 0))
+								SVGFile << "\t<text style=\"text-anchor:middle\" x=\"" << GraphLeft + index << "\" y=\"" << SVGHeight - 2 << "\">Week " << UTC.tm_yday / 7 + 1 << "</text>" << std::endl;
+						}
+						else if (graph == GraphType::yearly)
+						{
+							const std::string Month[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+							if ((UTC.tm_yday == 0) && (UTC.tm_mday == 1) && (UTC.tm_hour == 0) && (UTC.tm_min == 0))
+								SVGFile << "\t<line style=\"stroke:red\" x1=\"" << GraphLeft + index << "\" y1=\"" << GraphTop << "\" x2=\"" << GraphLeft + index << "\" y2=\"" << GraphBottom + TickSize << "\" />" << std::endl;
+							else if ((UTC.tm_mday == 1) && (UTC.tm_hour == 0) && (UTC.tm_min == 0))
+								SVGFile << "\t<line style=\"stroke-dasharray:1\" x1=\"" << GraphLeft + index << "\" y1=\"" << GraphTop << "\" x2=\"" << GraphLeft + index << "\" y2=\"" << GraphBottom + TickSize << "\" />" << std::endl;
+							else if ((UTC.tm_mday == 15) && (UTC.tm_hour == 0) && (UTC.tm_min == 0))
+								SVGFile << "\t<text style=\"text-anchor:middle\" x=\"" << GraphLeft + index << "\" y=\"" << SVGHeight - 2 << "\">" << Month[UTC.tm_mon] << "</text>" << std::endl;
+						}
+					}
+				}
+
+				// Directional Arrow
+				SVGFile << "\t<polygon style=\"fill:red;stroke:red;fill-opacity:1;\" points=\"" << GraphLeft - 3 << "," << GraphBottom << " " << GraphLeft + 3 << "," << GraphBottom - 3 << " " << GraphLeft + 3 << "," << GraphBottom + 3 << "\" />" << std::endl;
+
+				if (MinMax)
+				{
+					// ApparentWindSpeed Values as a filled polygon showing the minimum and maximum
+					SVGFile << "\t<!-- ApparentWindSpeed MinMax -->" << std::endl;
+					SVGFile << "\t<polygon style=\"fill:blue;stroke:blue;clip-path:url(#GraphRegion)\" points=\"";
+					for (auto index = 1; index < (GraphWidth < TheWindValues.size() ? GraphWidth : TheWindValues.size()); index++)
+						SVGFile << index + GraphLeft << "," << int(((WindMax - TheWindValues[index].GetApparentWindSpeedMax()) * WindVerticalFactor) + GraphTop) << " ";
+					for (auto index = (GraphWidth < TheWindValues.size() ? GraphWidth : TheWindValues.size()) - 1; index > 0; index--)
+						SVGFile << index + GraphLeft << "," << int(((WindMax - TheWindValues[index].GetApparentWindSpeed()) * WindVerticalFactor) + GraphTop) << " ";
+					SVGFile << "\" />" << std::endl;
+				}
+				// always draw this line over the top of the MinMax
+				// ApparentWindSpeed Values as a continuous line
+				SVGFile << "\t<!-- ApparentWindSpeed -->" << std::endl;
+				SVGFile << "\t<polyline style=\"fill:none;stroke:blue;clip-path:url(#GraphRegion)\" points=\"";
+				for (auto index = 1; index < (GraphWidth < TheWindValues.size() ? GraphWidth : TheWindValues.size()); index++)
+					SVGFile << index + GraphLeft << "," << int(((WindMax - TheWindValues[index].GetApparentWindSpeed()) * WindVerticalFactor) + GraphTop) << " ";
+				SVGFile << "\" />" << std::endl;
+
+				SVGFile << "</svg>" << std::endl;
+				SVGFile.close();
+				struct utimbuf SVGut({ TheWindValues.begin()->Time, TheWindValues.begin()->Time });
+				utime(SVGFileName.c_str(), &SVGut);
+			}
+		}
+	}
+}
+/////////////////////////////////////////////////////////////////////////////
 std::vector<Influx_Pressure> InfluxMRTGPressure; // vector structure similar to MRTG Log File
 // Takes current datapoint and updates the mapped structure in memory simulating the contents of a MRTG log file.
 /////////////////////////////////////////////////////////////////////////////
@@ -1285,6 +1468,46 @@ int main(int argc, char** argv)
 				}
 			}
 		}
+		if (bMonitorWind && bMonitorPressure)
+		{
+			std::string SVGTitle("Wind Speed and Air Pressure");
+			SVGTitle.insert(0, " ");
+			SVGTitle.insert(0, InfluxDBDatabase);
+			SVGTitle.front() = std::toupper(SVGTitle.front());
+			std::vector<Influx_Wind> WindValues;
+			std::vector<Influx_Pressure> PressureValues;
+			std::filesystem::path OutputPath;
+			std::ostringstream OutputFilename;
+			OutputFilename.str("");
+			OutputFilename << InfluxDBDatabase;
+			OutputFilename << "_windpressure-day.svg";
+			OutputPath = SVGDirectory / OutputFilename.str();
+			ReadMRTGData(InfluxMRTGWind, WindValues, GraphType::daily);
+			ReadMRTGData(InfluxMRTGPressure, PressureValues, GraphType::daily);
+			WriteSVG(WindValues, PressureValues, OutputPath, SVGTitle, GraphType::daily, true);
+			OutputFilename.str("");
+			OutputFilename << InfluxDBDatabase;
+			OutputFilename << "_windpressure-week.svg";
+			OutputPath = SVGDirectory / OutputFilename.str();
+			ReadMRTGData(InfluxMRTGWind, WindValues, GraphType::weekly);
+			ReadMRTGData(InfluxMRTGPressure, PressureValues, GraphType::weekly);
+			WriteSVG(WindValues, PressureValues, OutputPath, SVGTitle, GraphType::weekly, true);
+			OutputFilename.str("");
+			OutputFilename << InfluxDBDatabase;
+			OutputFilename << "_windpressure-month.svg";
+			OutputPath = SVGDirectory / OutputFilename.str();
+			ReadMRTGData(InfluxMRTGWind, WindValues, GraphType::monthly);
+			ReadMRTGData(InfluxMRTGPressure, PressureValues, GraphType::monthly);
+			WriteSVG(WindValues, PressureValues, OutputPath, SVGTitle, GraphType::monthly, true);
+			OutputFilename.str("");
+			OutputFilename << InfluxDBDatabase;
+			OutputFilename << "_windpressure-year.svg";
+			OutputPath = SVGDirectory / OutputFilename.str();
+			ReadMRTGData(InfluxMRTGWind, WindValues, GraphType::monthly);
+			ReadMRTGData(InfluxMRTGPressure, PressureValues, GraphType::yearly);
+			WriteSVG(WindValues, PressureValues, OutputPath, SVGTitle, GraphType::yearly, true);
+		}
+
 		sigset_t set;
 		sigemptyset(&set);
 		sigaddset(&set, SIGINT);
