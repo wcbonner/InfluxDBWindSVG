@@ -922,7 +922,6 @@ void WriteSVG(std::vector<Influx_Pressure>& TheValues, const std::filesystem::pa
 					SVGFile << index + GraphLeft << "," << int(((TempMax - TheValues[index].GetOutsidePressure()) * TempVerticalFactor) + GraphTop) << " ";
 				SVGFile << "\" />" << std::endl;
 
-				//TODO: The Next three line position needs to be calculated by an algorythm
 				SVGFile << "\t<text class=\"barometer-label\" x=\"50%\" y=\"" << int(((TempMax - 974) * TempVerticalFactor) + GraphTop) << "\">Rain</text>" << std::endl;
 				SVGFile << "\t<text class=\"barometer-label\" x=\"50%\" y=\"" << int(((TempMax - 999) * TempVerticalFactor) + GraphTop) << "\">Change</text>" << std::endl;
 				SVGFile << "\t<text class=\"barometer-label\" x=\"50%\" y=\"" << int(((TempMax - 1024) * TempVerticalFactor) + GraphTop) << "\">Fair</text>" << std::endl;
@@ -1157,10 +1156,12 @@ void WriteSVG(std::vector<Influx_Wind>& TheWindValues, std::vector<Influx_Pressu
 					SVGFile << index + GraphLeft << "," << int(((PressureMax - ThePressureValues[index].GetOutsidePressure()) * PressureVerticalFactor) + GraphTop) << " ";
 				SVGFile << "\" />" << std::endl;
 
-				//TODO: The Next three line position needs to be calculated by an algorythm
-				SVGFile << "\t<text class=\"barometer-label\" x=\"50%\" y=\"" << int(((PressureMax - 974) * PressureVerticalFactor) + GraphTop) << "\">Rain</text>" << std::endl;
-				SVGFile << "\t<text class=\"barometer-label\" x=\"50%\" y=\"" << int(((PressureMax - 999) * PressureVerticalFactor) + GraphTop) << "\">Change</text>" << std::endl;
-				SVGFile << "\t<text class=\"barometer-label\" x=\"50%\" y=\"" << int(((PressureMax - 1024) * PressureVerticalFactor) + GraphTop) << "\">Fair</text>" << std::endl;
+				if (graph != GraphType::daily) // this text was way too busy on the daily graph
+				{
+					SVGFile << "\t<text class=\"barometer-label\" x=\"50%\" y=\"" << int(((PressureMax - 974) * PressureVerticalFactor) + GraphTop) << "\">Rain</text>" << std::endl;
+					SVGFile << "\t<text class=\"barometer-label\" x=\"50%\" y=\"" << int(((PressureMax - 999) * PressureVerticalFactor) + GraphTop) << "\">Change</text>" << std::endl;
+					SVGFile << "\t<text class=\"barometer-label\" x=\"50%\" y=\"" << int(((PressureMax - 1024) * PressureVerticalFactor) + GraphTop) << "\">Fair</text>" << std::endl;
+				}
 
 				SVGFile << "</svg>" << std::endl;
 				SVGFile.close();
