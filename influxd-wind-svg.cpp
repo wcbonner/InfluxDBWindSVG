@@ -966,28 +966,52 @@ void WriteSVG(std::vector<Influx_Wind>& TheWindValues, std::vector<Influx_Pressu
 				tempOString.str("");
 				tempOString << "Wind Gust (" << std::fixed << std::setprecision(1) << TheWindValues[0].GetApparentWindSpeedMax() << " kn)";
 				const std::string YLegendWindGust(tempOString.str());
+				tempOString.str("");
+				tempOString << "Pressure (" << std::fixed << std::setprecision(1) << ThePressureValues[0].GetOutsidePressure() << " hPa)";
+				const std::string YLegendPressure(tempOString.str());
 				int GraphTop = FontSize + TickSize;
 				int GraphBottom = SVGHeight - GraphTop;
 				int GraphRight = SVGWidth - GraphTop;
+				{
+					GraphWidth -= FontSize * 2;
+					GraphRight -= FontSize + TickSize * 2;
+				}
 				int GraphLeft = GraphRight - GraphWidth;
 				int GraphVerticalDivision = (GraphBottom - GraphTop) / 4;
 				double WindMin = DBL_MAX;
 				double WindMax = -DBL_MAX;
+				double PressureMin = DBL_MAX;
+				double PressureMax = -DBL_MAX;
 				if (MinMax)
+				{
 					for (auto index = 0; index < (GraphWidth < TheWindValues.size() ? GraphWidth : TheWindValues.size()); index++)
 					{
 						WindMin = std::min(WindMin, TheWindValues[index].GetApparentWindSpeedMin());
 						WindMax = std::max(WindMax, TheWindValues[index].GetApparentWindSpeedMax());
 					}
+					for (auto index = 0; index < (GraphWidth < ThePressureValues.size() ? GraphWidth : ThePressureValues.size()); index++)
+					{
+						PressureMin = std::min(PressureMin, ThePressureValues[index].GetOutsidePressureMin());
+						PressureMax = std::max(PressureMax, ThePressureValues[index].GetOutsidePressureMax());
+					}
+				}
 				else
+				{
 					for (auto index = 0; index < (GraphWidth < TheWindValues.size() ? GraphWidth : TheWindValues.size()); index++)
 					{
 						WindMin = std::min(WindMin, TheWindValues[index].GetApparentWindSpeed());
 						WindMax = std::max(WindMax, TheWindValues[index].GetApparentWindSpeed());
 					}
-
+					for (auto index = 0; index < (GraphWidth < ThePressureValues.size() ? GraphWidth : ThePressureValues.size()); index++)
+					{
+						PressureMin = std::min(PressureMin, ThePressureValues[index].GetOutsidePressure());
+						PressureMax = std::max(PressureMax, ThePressureValues[index].GetOutsidePressure());
+					}
+				}
 				double WindVerticalDivision = (WindMax - WindMin) / 4;
 				double WindVerticalFactor = (GraphBottom - GraphTop) / (WindMax - WindMin);
+				double PressureVerticalDivision = (PressureMax - PressureMin) / 4;
+				double PressureVerticalFactor = (GraphBottom - GraphTop) / (PressureMax - PressureMin);
 
 				SVGFile << "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"no\"?>" << std::endl;
 				SVGFile << "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"" << SVGWidth << "\" height=\"" << SVGHeight << "\">" << std::endl;
@@ -997,6 +1021,7 @@ void WriteSVG(std::vector<Influx_Wind>& TheWindValues, std::vector<Influx_Pressu
 				SVGFile << "\t\ttext { font-family: sans-serif; font-size: " << FontSize << "px; fill: black; }" << std::endl;
 				SVGFile << "\t\tline { stroke: black; }" << std::endl;
 				SVGFile << "\t\tpolygon { fill-opacity: 0.5; }" << std::endl;
+				SVGFile << "\t\t.barometer-label { font-family: Georgia, serif; font-style: italic; font-size: " << int(PressureVerticalFactor * 10) << "px; opacity: 0.5; clip-path: url(#GraphRegion); text-anchor: middle; dominant-baseline: middle; }" << std::endl;
 #ifdef _DARK_STYLE_
 				SVGFile << "\t@media only screen and (prefers-color-scheme: dark) {" << std::endl;
 				SVGFile << "\t\ttext { fill: grey; }" << std::endl;
@@ -1013,14 +1038,18 @@ void WriteSVG(std::vector<Influx_Wind>& TheWindValues, std::vector<Influx_Pressu
 				SVGFile << "\t<text style=\"fill:blue;text-anchor:middle\" x=\"" << FontSize * LegendIndex << "\" y=\"50%\" transform=\"rotate(270 " << FontSize * LegendIndex << "," << (GraphTop + GraphBottom) / 2 << ")\">" << YLegendWindSpeed << "</text>" << std::endl;
 				LegendIndex++;
 				SVGFile << "\t<text style=\"fill:blue;text-anchor:middle\" x=\"" << FontSize * LegendIndex << "\" y=\"50%\" transform=\"rotate(270 " << FontSize * LegendIndex << "," << (GraphTop + GraphBottom) / 2 << ")\">" << YLegendWindGust << "</text>" << std::endl;
+				LegendIndex++;
+				SVGFile << "\t<text style=\"fill:green;text-anchor:middle\" x=\"" << FontSize * LegendIndex << "\" y=\"50%\" transform=\"rotate(270 " << FontSize * LegendIndex << "," << (GraphTop + GraphBottom) / 2 << ")\">" << YLegendPressure << "</text>" << std::endl;
 
 				// Top Line
 				SVGFile << "\t<line x1=\"" << GraphLeft - TickSize << "\" y1=\"" << GraphTop << "\" x2=\"" << GraphRight + TickSize << "\" y2=\"" << GraphTop << "\"/>" << std::endl;
 				SVGFile << "\t<text style=\"fill:blue;text-anchor:end;dominant-baseline:middle\" x=\"" << GraphLeft - TickSize << "\" y=\"" << GraphTop << "\">" << std::fixed << std::setprecision(1) << WindMax << "</text>" << std::endl;
+				SVGFile << "\t<text style=\"fill:green;dominant-baseline:middle\" x=\"" << GraphRight + TickSize << "\" y=\"" << GraphTop << "\">" << std::fixed << std::setprecision(1) << PressureMax << "</text>" << std::endl;
 
 				// Bottom Line
 				SVGFile << "\t<line x1=\"" << GraphLeft - TickSize << "\" y1=\"" << GraphBottom << "\" x2=\"" << GraphRight + TickSize << "\" y2=\"" << GraphBottom << "\"/>" << std::endl;
 				SVGFile << "\t<text style=\"fill:blue;text-anchor:end;dominant-baseline:middle\" x=\"" << GraphLeft - TickSize << "\" y=\"" << GraphBottom << "\">" << std::fixed << std::setprecision(1) << WindMin << "</text>" << std::endl;
+				SVGFile << "\t<text style=\"fill:green;dominant-baseline:middle\" x=\"" << GraphRight + TickSize << "\" y=\"" << GraphBottom << "\">" << std::fixed << std::setprecision(1) << PressureMin << "</text>" << std::endl;
 
 				// Left Line
 				SVGFile << "\t<line x1=\"" << GraphLeft << "\" y1=\"" << GraphTop << "\" x2=\"" << GraphLeft << "\" y2=\"" << GraphBottom << "\"/>" << std::endl;
@@ -1033,6 +1062,7 @@ void WriteSVG(std::vector<Influx_Wind>& TheWindValues, std::vector<Influx_Pressu
 				{
 					SVGFile << "\t<line style=\"stroke-dasharray:1\" x1=\"" << GraphLeft - TickSize << "\" y1=\"" << GraphTop + (GraphVerticalDivision * index) << "\" x2=\"" << GraphRight + TickSize << "\" y2=\"" << GraphTop + (GraphVerticalDivision * index) << "\" />" << std::endl;
 					SVGFile << "\t<text style=\"fill:blue;text-anchor:end;dominant-baseline:middle\" x=\"" << GraphLeft - TickSize << "\" y=\"" << GraphTop + (GraphVerticalDivision * index) << "\">" << std::fixed << std::setprecision(1) << WindMax - (WindVerticalDivision * index) << "</text>" << std::endl;
+					SVGFile << "\t<text style=\"fill:green;dominant-baseline:middle\" x=\"" << GraphRight + TickSize << "\" y=\"" << GraphTop + (GraphVerticalDivision * index) << "\">" << std::fixed << std::setprecision(1) << PressureMax - (PressureVerticalDivision * index) << "</text>" << std::endl;
 				}
 
 				// Horizontal Division Dashed Lines
@@ -1101,6 +1131,15 @@ void WriteSVG(std::vector<Influx_Wind>& TheWindValues, std::vector<Influx_Pressu
 					for (auto index = (GraphWidth < TheWindValues.size() ? GraphWidth : TheWindValues.size()) - 1; index > 0; index--)
 						SVGFile << index + GraphLeft << "," << int(((WindMax - TheWindValues[index].GetApparentWindSpeed()) * WindVerticalFactor) + GraphTop) << " ";
 					SVGFile << "\" />" << std::endl;
+
+					// OutsidePressure Values as a filled polygon showing the minimum and maximum
+					SVGFile << "\t<!-- OutsidePressure MinMax -->" << std::endl;
+					SVGFile << "\t<polygon style=\"fill:green;stroke:green;clip-path:url(#GraphRegion)\" points=\"";
+					for (auto index = 1; index < (GraphWidth < ThePressureValues.size() ? GraphWidth : ThePressureValues.size()); index++)
+						SVGFile << index + GraphLeft << "," << int(((PressureMax - ThePressureValues[index].GetOutsidePressureMax()) * PressureVerticalFactor) + GraphTop) << " ";
+					for (auto index = (GraphWidth < ThePressureValues.size() ? GraphWidth : ThePressureValues.size()) - 1; index > 0; index--)
+						SVGFile << index + GraphLeft << "," << int(((PressureMax - ThePressureValues[index].GetOutsidePressureMin()) * PressureVerticalFactor) + GraphTop) << " ";
+					SVGFile << "\" />" << std::endl;
 				}
 				// always draw this line over the top of the MinMax
 				// ApparentWindSpeed Values as a continuous line
@@ -1109,6 +1148,19 @@ void WriteSVG(std::vector<Influx_Wind>& TheWindValues, std::vector<Influx_Pressu
 				for (auto index = 1; index < (GraphWidth < TheWindValues.size() ? GraphWidth : TheWindValues.size()); index++)
 					SVGFile << index + GraphLeft << "," << int(((WindMax - TheWindValues[index].GetApparentWindSpeed()) * WindVerticalFactor) + GraphTop) << " ";
 				SVGFile << "\" />" << std::endl;
+
+				// always draw this line over the top of the MinMax
+				// OutsidePressure Values as a continuous line
+				SVGFile << "\t<!-- OutsidePressure -->" << std::endl;
+				SVGFile << "\t<polyline style=\"fill:none;stroke:green;clip-path:url(#GraphRegion)\" points=\"";
+				for (auto index = 1; index < (GraphWidth < ThePressureValues.size() ? GraphWidth : ThePressureValues.size()); index++)
+					SVGFile << index + GraphLeft << "," << int(((PressureMax - ThePressureValues[index].GetOutsidePressure()) * PressureVerticalFactor) + GraphTop) << " ";
+				SVGFile << "\" />" << std::endl;
+
+				//TODO: The Next three line position needs to be calculated by an algorythm
+				SVGFile << "\t<text class=\"barometer-label\" x=\"50%\" y=\"" << int(((PressureMax - 974) * PressureVerticalFactor) + GraphTop) << "\">Rain</text>" << std::endl;
+				SVGFile << "\t<text class=\"barometer-label\" x=\"50%\" y=\"" << int(((PressureMax - 999) * PressureVerticalFactor) + GraphTop) << "\">Change</text>" << std::endl;
+				SVGFile << "\t<text class=\"barometer-label\" x=\"50%\" y=\"" << int(((PressureMax - 1024) * PressureVerticalFactor) + GraphTop) << "\">Fair</text>" << std::endl;
 
 				SVGFile << "</svg>" << std::endl;
 				SVGFile.close();
