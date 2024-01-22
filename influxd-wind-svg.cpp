@@ -1133,15 +1133,6 @@ void WriteSVG(std::vector<Influx_Wind>& TheWindValues, std::vector<Influx_Pressu
 
 				if (MinMax)
 				{
-					// ApparentWindSpeed Values as a filled polygon showing the minimum and maximum
-					SVGFile << "\t<!-- ApparentWindSpeed MinMax -->" << std::endl;
-					SVGFile << "\t<polygon style=\"fill:blue;stroke:blue;clip-path:url(#GraphRegion)\" points=\"";
-					for (auto index = 1; index < (GraphWidth < TheWindValues.size() ? GraphWidth : TheWindValues.size()); index++)
-						SVGFile << index + GraphLeft << "," << int(((WindMax - TheWindValues[index].GetApparentWindSpeedMax()) * WindVerticalFactor) + GraphTop) << " ";
-					for (auto index = (GraphWidth < TheWindValues.size() ? GraphWidth : TheWindValues.size()) - 1; index > 0; index--)
-						SVGFile << index + GraphLeft << "," << int(((WindMax - TheWindValues[index].GetApparentWindSpeed()) * WindVerticalFactor) + GraphTop) << " ";
-					SVGFile << "\" />" << std::endl;
-
 					// OutsidePressure Values as a filled polygon showing the minimum and maximum
 					if (DrawPressure)
 					{
@@ -1153,16 +1144,15 @@ void WriteSVG(std::vector<Influx_Wind>& TheWindValues, std::vector<Influx_Pressu
 							SVGFile << index + GraphLeft << "," << int(((PressureMax - ThePressureValues[index].GetOutsidePressureMin()) * PressureVerticalFactor) + GraphTop) << " ";
 						SVGFile << "\" />" << std::endl;
 					}
+					// ApparentWindSpeed Values as a filled polygon showing the minimum and maximum
+					SVGFile << "\t<!-- ApparentWindSpeed MinMax -->" << std::endl;
+					SVGFile << "\t<polygon style=\"fill:blue;stroke:blue;clip-path:url(#GraphRegion)\" points=\"";
+					for (auto index = 1; index < (GraphWidth < TheWindValues.size() ? GraphWidth : TheWindValues.size()); index++)
+						SVGFile << index + GraphLeft << "," << int(((WindMax - TheWindValues[index].GetApparentWindSpeedMax()) * WindVerticalFactor) + GraphTop) << " ";
+					for (auto index = (GraphWidth < TheWindValues.size() ? GraphWidth : TheWindValues.size()) - 1; index > 0; index--)
+						SVGFile << index + GraphLeft << "," << int(((WindMax - TheWindValues[index].GetApparentWindSpeed()) * WindVerticalFactor) + GraphTop) << " ";
+					SVGFile << "\" />" << std::endl;
 				}
-				// always draw this line over the top of the MinMax
-				// ApparentWindSpeed Values as a continuous line
-				SVGFile << "\t<!-- ApparentWindSpeed -->" << std::endl;
-				SVGFile << "\t<polyline style=\"fill:none;stroke:blue;clip-path:url(#GraphRegion)\" points=\"";
-				for (auto index = 1; index < (GraphWidth < TheWindValues.size() ? GraphWidth : TheWindValues.size()); index++)
-					SVGFile << index + GraphLeft << "," << int(((WindMax - TheWindValues[index].GetApparentWindSpeed()) * WindVerticalFactor) + GraphTop) << " ";
-				SVGFile << "\" />" << std::endl;
-
-				// always draw this line over the top of the MinMax
 				// OutsidePressure Values as a continuous line
 				if (DrawPressure)
 				{
@@ -1172,6 +1162,12 @@ void WriteSVG(std::vector<Influx_Wind>& TheWindValues, std::vector<Influx_Pressu
 						SVGFile << index + GraphLeft << "," << int(((PressureMax - ThePressureValues[index].GetOutsidePressure()) * PressureVerticalFactor) + GraphTop) << " ";
 					SVGFile << "\" />" << std::endl;
 				}
+				// ApparentWindSpeed Values as a continuous line
+				SVGFile << "\t<!-- ApparentWindSpeed -->" << std::endl;
+				SVGFile << "\t<polyline style=\"fill:none;stroke:blue;clip-path:url(#GraphRegion)\" points=\"";
+				for (auto index = 1; index < (GraphWidth < TheWindValues.size() ? GraphWidth : TheWindValues.size()); index++)
+					SVGFile << index + GraphLeft << "," << int(((WindMax - TheWindValues[index].GetApparentWindSpeed()) * WindVerticalFactor) + GraphTop) << " ";
+				SVGFile << "\" />" << std::endl;
 
 				if (DrawPressure)
 					if (graph != GraphType::daily) // this text was way too busy on the daily graph
