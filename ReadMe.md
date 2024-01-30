@@ -37,17 +37,19 @@ It required getting https://github.com/offa/influxdb-cxx up and running, which r
 ```
 git clone https://github.com/libcpr/cpr.git
 mkdir cpr/build && pushd cpr/build
-cmake .. -DCPR_USE_SYSTEM_CURL=ON
+cmake .. -DCPR_USE_SYSTEM_CURL=OFF
 cmake --build .
 sudo cmake --install .
 popd
 ```
 #### influxdb-cxx
 ```
+sudo apt install libboost-all-dev
 git clone https://github.com/offa/influxdb-cxx
 mkdir influxdb-cxx/build && pushd influxdb-cxx/build
 cmake -D INFLUXCXX_TESTING:BOOL=OFF ..
 sudo make install
+sudo ldconfig
 popd
 ```
 #### InfluxDBWindSVG
