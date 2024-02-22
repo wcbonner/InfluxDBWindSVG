@@ -1570,7 +1570,7 @@ int main(int argc, char** argv)
 			OutputFilename << InfluxDBDatabase;
 			OutputFilename << "_windpressure-year.svg";
 			OutputPath = SVGDirectory / OutputFilename.str();
-			ReadMRTGData(InfluxMRTGWind, WindValues, GraphType::monthly);
+			ReadMRTGData(InfluxMRTGWind, WindValues, GraphType::yearly);
 			ReadMRTGData(InfluxMRTGPressure, PressureValues, GraphType::yearly);
 			WriteSVG(WindValues, PressureValues, OutputPath, SVGTitle, GraphType::yearly, true);
 		}
