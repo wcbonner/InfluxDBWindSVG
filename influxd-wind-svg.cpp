@@ -584,7 +584,7 @@ Influx_Pressure::Influx_Pressure(const influxdb::Point& data)
 	Time = std::chrono::system_clock::to_time_t(data.getTimestamp());
 	std::string value(data.getFields());
 	value.erase(0, value.find("=") + 1);
-	OutsidePressureMax = OutsidePressureMin = OutsidePressure = std::atof(value.c_str()) / 100;
+	OutsidePressureMax = OutsidePressureMin = OutsidePressure = std::atof(value.c_str()) / 100.0;
 	Averages = 1;
 }
 Influx_Pressure::Influx_Pressure(const std::string& data)
