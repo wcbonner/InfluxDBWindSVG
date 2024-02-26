@@ -10,7 +10,7 @@ if (POLICY CMP0141)
 endif()
 
 project ("influxdbwindsvg"
-    VERSION 3.20240222.0
+    VERSION 3.20240225.0
     DESCRIPTION "Retrieves Environment Data from Influx Database and creates SVG files"
     HOMEPAGE_URL https://github.com/wcbonner/InfluxDBWindSVG
 )
@@ -18,7 +18,7 @@ project ("influxdbwindsvg"
 configure_file(influxdbwindsvg-version.h.in influxdbwindsvg-version.h)
 
 # Add source to this project's executable.
-add_executable (influxdbwindsvg "influxd-wind-svg.cpp" "influxd-wind-svg.h" )
+add_executable (influxdbwindsvg "influxd-wind-svg.cpp" "influxd-wind-svg.h" wimiso8601.cpp wimiso8601.h)
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET influxdbwindsvg PROPERTY CXX_STANDARD 20)
