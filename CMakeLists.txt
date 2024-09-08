@@ -9,46 +9,62 @@ if (POLICY CMP0141)
   set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
 endif()
 
-project ("influxdbwindsvg"
-    VERSION 3.20240225.0
-    DESCRIPTION "Retrieves Environment Data from Influx Database and creates SVG files"
-    HOMEPAGE_URL https://github.com/wcbonner/InfluxDBWindSVG
+project (influxdbwindsvg
+	VERSION 3.20240629.0
+	DESCRIPTION "Retrieves Environment Data from Influx Database and creates SVG files"
+	HOMEPAGE_URL https://github.com/wcbonner/InfluxDBWindSVG
 )
 
-configure_file(influxdbwindsvg-version.h.in influxdbwindsvg-version.h)
+configure_file(
+	influxdbwindsvg-version.h.in
+	influxdbwindsvg-version.h
+)
 
 # Add source to this project's executable.
-add_executable (influxdbwindsvg "influxd-wind-svg.cpp" "influxd-wind-svg.h" wimiso8601.cpp wimiso8601.h)
+add_executable (
+	${PROJECT_NAME}
+	influxd-wind-svg.cpp
+	influxd-wind-svg.h
+	wimiso8601.cpp
+	wimiso8601.h
+)
 
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET influxdbwindsvg PROPERTY CXX_STANDARD 20)
-endif()
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
 
-target_include_directories(influxdbwindsvg PUBLIC
-                           "${PROJECT_BINARY_DIR}"
-                           ${EXTRA_INCLUDES}
-                           )
+target_include_directories(
+	${PROJECT_NAME} PUBLIC
+	"${PROJECT_BINARY_DIR}"
+	${EXTRA_INCLUDES}
+)
 
 # TODO: Add tests and install targets if needed.
 
 find_package(InfluxDB REQUIRED)
-target_link_libraries(influxdbwindsvg PRIVATE InfluxData::InfluxDB)
 
-install(TARGETS influxdbwindsvg
-    DESTINATION bin
-    RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-    LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+target_link_libraries(
+	${PROJECT_NAME}
+	PRIVATE InfluxData::InfluxDB
+)
+
+install(TARGETS ${PROJECT_NAME}
+	DESTINATION bin
+	RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+	LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
 )
 
 install(FILES "influxdbwindsvg.service"
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system
-    COMPONENT "influxdbwindsvg"
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system
+	COMPONENT "influxdbwindsvg"
 )
 
 # Going through https://cmake.org/cmake/help/latest/guide/tutorial/index.html#guide:CMake%20Tutorial
 
-#enable_testing()
-#add_test(NAME Runs COMMAND influxdbwindsvg --help)
+include(CTest)
+
+add_test(
+	NAME Runs
+	COMMAND ${PROJECT_NAME} --help
+)
 
 set(CPACK_GENERATOR "DEB")
 set(CPACK_PACKAGE_CONTACT "wcbonner@users.noreply.github.com")
