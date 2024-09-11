@@ -1,7 +1,12 @@
 #!/bin/sh
 # POSTINST script for InfluxDBWindSVG
 
-echo "\033[36m HI I'M A POSTINST SCRIPT `date` \033[39m"
+echo "\033[36m HI I'M A POSTINST SCRIPT `date --rfc-3339='seconds'` \033[39m"
+adduser --system --ingroup www-data influxdbwindsvg
+mkdir --mode 0775 --parents /var/cache/InfluxDBWindSVG
+chown --recursive influxdbwindsvg:www-data /var/cache/InfluxDBWindSVG
+chmod --recursive 0664 /var/cache/InfluxDBWindSVG
+chmod  0775 /var/cache/InfluxDBWindSVG
 systemctl daemon-reload
 systemctl enable influxdbwindsvg.service
 systemctl start influxdbwindsvg.service

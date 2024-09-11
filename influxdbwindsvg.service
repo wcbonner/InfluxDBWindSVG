@@ -10,7 +10,8 @@ StartLimitIntervalSec=33
 Type=simple
 Restart=always
 RestartSec=1min 30s
-ExecStartPre=/bin/mkdir --parents /var/cache/InfluxDBWindSVG
+User=influxdbwindsvg
+Group=www-data
 ExecStart=/usr/local/bin/influxdbwindsvg \
 	--verbose 0 \
 	--wind \
