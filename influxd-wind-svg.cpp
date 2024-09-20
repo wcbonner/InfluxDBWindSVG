@@ -851,7 +851,7 @@ void WriteSVG(std::vector<Influx_Pressure>& TheValues, const std::filesystem::pa
 	}
 }
 /////////////////////////////////////////////////////////////////////////////
-void WriteSVG(std::vector<Influx_Wind>& TheWindValues, std::vector<Influx_Pressure>& ThePressureValues, const std::filesystem::path& SVGFileName, const std::string& Title = "", const GraphType graph = GraphType::daily, const bool MinMax = false)
+void WriteSVG(std::vector<Influx_Wind>& TheWindValues, std::vector<Influx_Pressure>& ThePressureValues, const std::filesystem::path& SVGFileName, const std::string& Title = "", const GraphType graph = GraphType::daily, const bool MinMax = false, const double MinPressureDifferential = 4.0)
 {
 	// this overloaded function should allow both wind and pressue on same graph, with wind as left (primary) and pressure as right (secondary) scales.
 	// By declaring these items here, I'm then basing all my other dimensions on these
@@ -917,7 +917,7 @@ void WriteSVG(std::vector<Influx_Wind>& TheWindValues, std::vector<Influx_Pressu
 				int GraphTop = FontSize + TickSize;
 				int GraphBottom = SVGHeight - GraphTop;
 				int GraphRight = SVGWidth - GraphTop;
-				bool DrawPressure = PressureMax - PressureMin > 4.0;
+				bool DrawPressure = PressureMax - PressureMin > MinPressureDifferential;
 				if (DrawPressure)
 				{
 					// Space for legend to be drawn on the right of the graph plus space for one more legend line on the left.
@@ -1467,7 +1467,7 @@ int main(int argc, char** argv)
 			OutputPath = SVGDirectory / OutputFilename.str();
 			ReadMRTGData(InfluxMRTGWind, WindValues, GraphType::daily);
 			ReadMRTGData(InfluxMRTGPressure, PressureValues, GraphType::daily);
-			WriteSVG(WindValues, PressureValues, OutputPath, SVGTitle, GraphType::daily, true);
+			WriteSVG(WindValues, PressureValues, OutputPath, SVGTitle, GraphType::daily, true, 1.0);
 			OutputFilename.str("");
 			OutputFilename << InfluxDBDatabase;
 			OutputFilename << "_windpressure-week.svg";
