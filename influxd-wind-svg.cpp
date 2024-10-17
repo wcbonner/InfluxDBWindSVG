@@ -291,8 +291,8 @@ void WriteSVG(std::vector<Influx_Wind>& TheValues, const std::filesystem::path& 
 				SVGFile << "\t<!-- Created by: " << ProgramVersionString << " -->" << std::endl;
 				SVGFile << "\t<clipPath id=\"GraphRegion\"><polygon points=\"" << GraphLeft << "," << GraphTop << " " << GraphRight << "," << GraphTop << " " << GraphRight << "," << GraphBottom << " " << GraphLeft << "," << GraphBottom << "\" /></clipPath>" << std::endl;
 				SVGFile << "\t<style>" << std::endl;
-				SVGFile << "\t\ttext { font-family: sans-serif; font-size: " << FontSize << "px; fill: black; }" << std::endl;
-				SVGFile << "\t\tline { stroke: black; }" << std::endl;
+				SVGFile << "\t\ttext { font-family: sans-serif; font-size: " << FontSize << "px; fill: dimgrey; }" << std::endl;
+				SVGFile << "\t\tline { stroke: dimgrey; }" << std::endl;
 				SVGFile << "\t\tpolygon { fill-opacity: 0.5; }" << std::endl;
 #ifdef _DARK_STYLE_
 				SVGFile << "\t@media only screen and (prefers-color-scheme: dark) {" << std::endl;
